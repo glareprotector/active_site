@@ -13,6 +13,7 @@ from Bio import SeqIO
 from Bio.Blast import NCBIXML
 from Bio.Blast.Applications import NcbipsiblastCommandline
 from Bio.PDB import Polypeptide
+from Bio.Blast import NCBIXML
 
 import subprocess
 import string
@@ -177,6 +178,18 @@ class pdb_chain_seq_file_wrapper(file_wrapper):
         seq_record = Bio.SeqRecord.SeqRecord(seq)
         SeqIO.write(seq_record, self.get_file_location(), 'fasta')
         return open(self.get_file_location(),'r')
+
+class pdb_chain_seq_obj_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+    
+    def get_self_param_keys(self):
+        return ['pdb_name', 'chain_letter']
+
+    def constructor(self, recalculate):
+        seq_file_handle = global_stuff.the_file_manager.get_variable(pdb_chain_seq_file_wrapper(self.params, self.recalculate))
+        return SeqIO.read(seq_file_handle, 'fasta')
     
 class pdb_chain_blast_results_file_wrapper(file_wrapper):
 
@@ -208,3 +221,31 @@ class pdb_chain_aa_to_pos_obj_wrapper(obj_wrapper):
         chain_positions = [chain_obj[j].get_id()[1] for j in range(len(chain_obj))]
         return chain_positions 
 
+class pdb_chain_msa_input_file_wrapper(file_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return ['pdb_name', 'chain_letter', 'evalue', 'msa_input_max_num']
+
+    def constructor(self, recalculate):
+        # parse blast xml file, then do processing
+        blast_xml_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_blast_results_file_wrapper(self.params, recalculate))
+        record = NCBIXML.read(blast_xml_handle)
+        seen = set()
+        seq_records = []
+        # add the query sequence, and have a set so that only add each sequence once
+        query_record = pdb_chain_seq_obj_wrapper(self.params, self.recalculate)
+        seq_records.append(query_record)
+        seen.add(query.seq.tostring())
+        # add high scoring pairs in alignments with sufficiently low evalue that have not been seen
+        for alignment in record.alignments:
+            for hsp in alignment.hsps:
+                if hsp.expect < self.get_param('evalue') and not hsp.sbjct in seen:
+                    seq_records.append(SeqRecord(Seq(hsp.sbjct), id = alignment.hit_id))
+        # write hits to fasta file
+        output_handle = open(self.get_name(), 'w')
+        SeqIO.write(seq_records, output_handle, 'fasta')
+        
+        
