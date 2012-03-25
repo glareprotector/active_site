@@ -249,5 +249,48 @@ class pdb_chain_msa_input_file_wrapper(file_wrapper):
         output_handle = open(self.get_file_location(), 'w')
         SeqIO.write(seq_records, output_handle, 'fasta')
         print 'WROTE ', self.get_file_location()
-        
-        
+
+class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return['pdb_name', 'chain_letter']
+    
+    def get_representative_atom(self, res):
+        if 'CA' in res.child_dict.keys():
+            return res['CA']
+        elif 'CB' in res.child_dict.keys():
+            return res['CB']
+        else:
+            print 'no CA or CB atom in residue'
+            raise RuntimeError
+
+    def constructor(self, recalculate):
+        residues = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params, self.recalculate))
+        rep_atoms = [self.get_representative_atom(res) for res in residues]
+        num_res = len(residues)
+        dists = [[-1 for i in range(num_res)] for j in range(num_res)]
+        for i in range(num_res):
+            for j in range(num_res):
+                dists[i][j] = rep_atoms[i] - rep_atoms[j]
+        return dists
+
+class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return['pdb_name', 'chain_letter']
+
+    def constructor(self, recalculate):
+        dists = global_stuff.the_obj_manager.get_variable(pdb_chain_pairwise_distance_obj_wrapper(self.params, self.recalculate))
+        inv_avg_dists = [-1 for i in range(len(dists))]
+        for i in range(len(dists)):
+            val = 0;
+            for j in range(len(dists)):
+                val = val + dists[i][j]
+            inv_avg_dists[i] = 1.0 / (val / len(dists))
+        return inv_avg_dists
