@@ -4,5 +4,5 @@ Created on Mar 18, 2012
 @author: glareprotector
 '''
 
-BIN_FOLDER = '/Users/glareprotector/active_site/test/'
+BIN_FOLDER = '../test/'
 EVALUE = 1e-10

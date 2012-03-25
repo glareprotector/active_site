@@ -101,12 +101,13 @@ class wrapper(object):
         val = string.join(bits, sep='@')
         self.set_param('name', val)
     
-    def __init__(self, inherited_params=param({})):
+    def __init__(self, inherited_params=param({}), recalculate = False):
         self.params = self.get_self_params(inherited_params)
-        self.set_name() #
+        self.set_name() 
+        self.recalculate = recalculate
         print self.params, self.get_name()
 
-    def constructor(self):
+    def constructor(self, recalculate):
         raise NotImplementedError
 
 
@@ -135,7 +136,7 @@ class pdb_file_wrapper(file_wrapper):
     def get_self_param_keys(self):
         return ['pdb_name']
     
-    def constructor(self):
+    def constructor(self, recalculate):
         pdb_file_name = self.get_param('pdb_name')
         pdbl = Bio.PDB.PDBList()
         print pdb_file_name, self.get_param('location')
@@ -150,8 +151,8 @@ class pdb_chain_wrapper(obj_wrapper):
     def get_self_param_keys(self):
         return ['pdb_name', 'chain_letter']
     
-    def constructor(self):
-        f = global_stuff.the_file_manager.get_file_handle(pdb_file_wrapper(self.params))
+    def constructor(self, recalculate):
+        f = global_stuff.the_file_manager.get_file_handle(pdb_file_wrapper(self.params, self.recalculate))
         structure = Bio.PDB.PDBParser().get_structure(self.get_param('name'), f)
         chain = Bio.PDB.PPBuilder().build_peptides(structure[0][self.get_param('chain_letter')])
         to_return = []
@@ -168,8 +169,8 @@ class pdb_chain_seq_file_wrapper(file_wrapper):
     def get_self_param_keys(self):
         return ['pdb_name', 'chain_letter']
         
-    def constructor(self):
-        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params))
+    def constructor(self, recalculate):
+        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params, self.recalculate))
         # write the seq file at location + name
         raw_seq_string = ''.join([Polypeptide.three_to_one(res.resname) for res in chain_obj])
         seq = Bio.Seq.Seq(raw_seq_string)
@@ -185,9 +186,9 @@ class pdb_chain_blast_results_file_wrapper(file_wrapper):
     def get_self_param_keys(self):
         return ['pdb_name', 'chain_letter', 'evalue']
 
-    def constructor(self):
+    def constructor(self, recalculate):
         seq_records = []
-        f = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params))
+        f = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params, self.recalculate))
         query = SeqIO.parse(f, 'fasta')
         seq_records.append(query)
         psi_blast_cline = NcbipsiblastCommandline(cmd = global_stuff.BLAST_PATH, outfmt = 5, query = f.name, db = 'nr', out = self.get_file_location())
@@ -202,8 +203,8 @@ class pdb_chain_aa_to_pos_obj_wrapper(obj_wrapper):
     def get_self_param_keys(self):
         return ['pdb_name', 'chain_letter']
     
-    def constructor(self):
-        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params))
+    def constructor(self, recalculate):
+        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params, self.recalculate))
         chain_positions = [chain_obj[j].get_id()[1] for j in range(len(chain_obj))]
         return chain_positions 
 

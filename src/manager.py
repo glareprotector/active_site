@@ -23,16 +23,16 @@ class obj_manager(object):
     '''
     returns the variable with the desired name.  pickles and caches if desired
     '''
-    def get_variable(self, the_obj_wrapper, to_pickle=True):
+    def get_variable(self, the_obj_wrapper, recalculate = False, to_pickle=True):
         pickle_file = the_obj_wrapper.get_pickle_location()
-        if self.has_in_cache(the_obj_wrapper.get_name()):
+        if not recalculate and self.has_in_cache(the_obj_wrapper.get_name()):
             return self.get_from_cache(the_obj_wrapper.get_name())
-        elif global_stuff.the_file_manager.has_file(the_obj_wrapper.get_pickle_location()):
+        elif not recalculate and global_stuff.the_file_manager.has_file(the_obj_wrapper.get_pickle_location()):
             pickle_handle = global_stuff.the_file_manager.get_pickle_handle(the_obj_wrapper.get_pickle_location())
             obj = pickle.load(pickle_handle)
             self.cache_variable(obj, the_obj_wrapper.get_name())
         else:
-            obj = the_obj_wrapper.constructor()
+            obj = the_obj_wrapper.constructor(recalculate)
             self.cache_variable(obj, the_obj_wrapper.get_name())
             if to_pickle:
                 global_stuff.the_file_manager.pickle_obj(obj, pickle_file)
@@ -72,15 +72,15 @@ class file_manager(object):
     '''
     returns a handle to the desired (non-pickle) file.  if it isn't there, call the file_wrapper's constructor
     '''
-    def get_file_handle(self, the_file_wrapper):
+    def get_file_handle(self, the_file_wrapper, recalculate = False):
         full_path = the_file_wrapper.get_file_location()
-        if os.path.isfile(full_path):
+        if not recalculate and os.path.isfile(full_path):
             return open(full_path)
         else:
             file_folder = string.join(full_path.split('/')[:-1],'/')
             if not os.path.exists(file_folder):
                 os.makedirs(file_folder)
-            the_file_wrapper.constructor()
+            the_file_wrapper.constructor(recalculate)
             return open(full_path)
     
     '''
