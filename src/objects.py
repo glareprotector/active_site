@@ -188,7 +188,7 @@ class pdb_chain_seq_obj_wrapper(obj_wrapper):
         return ['pdb_name', 'chain_letter']
 
     def constructor(self, recalculate):
-        seq_file_handle = global_stuff.the_file_manager.get_variable(pdb_chain_seq_file_wrapper(self.params, self.recalculate))
+        seq_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params, self.recalculate))
         return SeqIO.read(seq_file_handle, 'fasta')
     
 class pdb_chain_blast_results_file_wrapper(file_wrapper):
@@ -204,6 +204,7 @@ class pdb_chain_blast_results_file_wrapper(file_wrapper):
         f = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params, self.recalculate))
         query = SeqIO.parse(f, 'fasta')
         seq_records.append(query)
+        print 'RUNNING BLAST!!!!!!!'
         psi_blast_cline = NcbipsiblastCommandline(cmd = global_stuff.BLAST_PATH, outfmt = 5, query = f.name, db = 'nr', out = self.get_file_location())
         subprocess.Popen(str(psi_blast_cline), shell=True, executable='/bin/bash')
 
@@ -236,16 +237,17 @@ class pdb_chain_msa_input_file_wrapper(file_wrapper):
         seen = set()
         seq_records = []
         # add the query sequence, and have a set so that only add each sequence once
-        query_record = pdb_chain_seq_obj_wrapper(self.params, self.recalculate)
-        seq_records.append(query_record)
+        query = global_stuff.the_obj_manager.get_variable(pdb_chain_seq_obj_wrapper(self.params, self.recalculate))
+        seq_records.append(query)
         seen.add(query.seq.tostring())
         # add high scoring pairs in alignments with sufficiently low evalue that have not been seen
         for alignment in record.alignments:
             for hsp in alignment.hsps:
                 if hsp.expect < self.get_param('evalue') and not hsp.sbjct in seen:
-                    seq_records.append(SeqRecord(Seq(hsp.sbjct), id = alignment.hit_id))
+                    seq_records.append(Bio.SeqRecord.SeqRecord(Bio.Seq.Seq(hsp.sbjct), id = alignment.hit_id))
         # write hits to fasta file
-        output_handle = open(self.get_name(), 'w')
+        output_handle = open(self.get_file_location(), 'w')
         SeqIO.write(seq_records, output_handle, 'fasta')
+        print 'WROTE ', self.get_file_location()
         
         
