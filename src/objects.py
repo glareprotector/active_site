@@ -191,10 +191,8 @@ class pdb_chain_blast_results_file_wrapper(file_wrapper):
         query = SeqIO.parse(f, 'fasta')
         seq_records.append(query)
         psi_blast_cline = NcbipsiblastCommandline(cmd = global_stuff.BLAST_PATH, outfmt = 5, query = f.name, db = 'nr', out = self.get_file_location())
-        print 'psiblast'
-        print str(psi_blast_cline)
         subprocess.Popen(str(psi_blast_cline), shell=True, executable='/bin/bash')
-        ##psi_blast_cline()
+
     
 class pdb_chain_aa_to_pos_obj_wrapper(obj_wrapper):
     
