@@ -14,10 +14,11 @@ from Bio.Blast import NCBIXML
 from Bio.Blast.Applications import NcbipsiblastCommandline
 from Bio.PDB import Polypeptide
 from Bio.Blast import NCBIXML
+from Bio.Align.Applications import MuscleCommandline
 
 import subprocess
 import string
-
+import os
 
 class param(object):
     
@@ -294,3 +295,29 @@ class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
                 val = val + dists[i][j]
             inv_avg_dists[i] = 1.0 / (val / len(dists))
         return inv_avg_dists
+
+class pdb_chain_msa_file_wrapper(file_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
+
+    def constructor(self, recalculate):
+        msa_input_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_input_file_wrapper(self.params, recalculate))
+        cline = MuscleCommandline(cmd = global_stuff.MUSCLE_PATH, input = msa_input_handle.name, out = self.get_file_location(), clw = False, maxiters = 2)
+        cline()
+
+class pdb_chain_conservation_score_file_wrapper(file_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
+
+    def constructor(self, recalculate):
+        msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_file_wrapper(self.params, recalculate))
+        args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), msa_file_handle.name]
+        subprocess.Popen(args)
