@@ -69,23 +69,6 @@ class res_potential(object):
         self.feature_wrappers = self.get_feature_wrappers(params)
     
 
-class potential(object):
-
-    def get_feature_wrappers(self):
-        pass
-
-    # assuming that var_info is sorted according to potential_info for now
-    def __init__(self, potential_info, var_info, added_feature_names):
-
-        self.potential_info = potential_info
-        self.var_info = var_info
-        feature_wrappers = self.get_feature_wrappers()
-        self.feature_name_to_feature_function = {}
-        for wrapper in feature_wrappers():
-            self.feature_name_to_feature_function[wrapper.get_name()] = global_stuff.the_obj_manager.get_variable(wrapper)
-        added_feature_names = feature_name_to_feature_function.keys()
-        
-
 class crf(object):
 
     def 
