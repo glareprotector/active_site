@@ -226,7 +226,7 @@ class pdb_chain_aa_to_pos_obj_wrapper(obj_wrapper):
 class pdb_chain_msa_input_file_wrapper(file_wrapper):
 
     def get_hard_coded_params(self):
-        return param({'location':constants.BIN_FOLDER})
+        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_input_max_num':100})
 
     def get_self_param_keys(self):
         return ['pdb_name', 'chain_letter', 'evalue', 'msa_input_max_num']
@@ -299,7 +299,7 @@ class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
 class pdb_chain_msa_file_wrapper(file_wrapper):
 
     def get_hard_coded_params(self):
-        return param({'location':constants.BIN_FOLDER})
+        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100})
 
     def get_self_param_keys(self):
         return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
@@ -312,7 +312,7 @@ class pdb_chain_msa_file_wrapper(file_wrapper):
 class pdb_chain_conservation_score_file_wrapper(file_wrapper):
 
     def get_hard_coded_params(self):
-        return param({'location':constants.BIN_FOLDER})
+        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100})
 
     def get_self_param_keys(self):
         return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
@@ -321,3 +321,15 @@ class pdb_chain_conservation_score_file_wrapper(file_wrapper):
         msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_file_wrapper(self.params, recalculate))
         args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), msa_file_handle.name]
         subprocess.Popen(args)
+
+
+class crf_obj_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return['pdb_name', 'chain_letter', 'dist_cut_off']
+
+    def constructor(self, recalculate):
+        return crf(self.params, recalculate)
