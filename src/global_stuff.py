@@ -23,7 +23,7 @@ def get_transpose(mat):
     width = len(mat[0])
     m = [ [-1 for i in range(height)] for j in range(width)]
     for i in range(width):
-        for j in range(length):
+        for j in range(height):
             m[i][j] = mat[j][i]
     return m
 
@@ -35,8 +35,10 @@ def dict_deep_copy(d):
 
 def write_mat(mat, f_name, the_sep = ','):
     f = open(f_name, 'w')
+    print mat
     for row in mat:
-        line = string.join(row, sep=the_sep)
+        
+        line = string.join([str(x) for x in row], sep=the_sep)
         line = line + '\n'
         f.write(line)
     f.close()

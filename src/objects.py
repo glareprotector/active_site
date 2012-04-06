@@ -20,6 +20,9 @@ import subprocess
 import string
 import os
 
+import pdb
+
+
 class param(object):
     
     def __init__(self, param_dict):
@@ -60,15 +63,9 @@ class param(object):
         
 
 
-class param_tree(object):
-    
-    def __init__(self, node_params, child_params_dict):
-        self.node_params = node_params
-        self.child_param_list = child_params_dict
-        
 
 '''
-3 member variables: self.params, which will store all parameters, self.child_wrappers, and param_tree
+1 member variables self.params, which will store all parameters
 '''
 class wrapper(object):
     
@@ -103,11 +100,10 @@ class wrapper(object):
         val = string.join(bits, sep='@')
         self.set_param('name', val)
     
-    def __init__(self, inherited_params=param({}), recalculate = False):
+    def __init__(self, inherited_params=param({})):
         self.params = self.get_self_params(inherited_params)
         self.set_name() 
-        self.recalculate = recalculate
-        print self.params, self.get_name()
+        #print self.params, self.get_name()
 
     def constructor(self, recalculate):
         raise NotImplementedError
@@ -139,6 +135,7 @@ class pdb_file_wrapper(file_wrapper):
         return ['pdb_name']
     
     def constructor(self, recalculate):
+        #pdb.set_trace()
         pdb_file_name = self.get_param('pdb_name')
         pdbl = Bio.PDB.PDBList()
         print pdb_file_name, self.get_param('location')
@@ -154,14 +151,14 @@ class pdb_chain_wrapper(obj_wrapper):
         return ['pdb_name', 'chain_letter']
     
     def constructor(self, recalculate):
-        f = global_stuff.the_file_manager.get_file_handle(pdb_file_wrapper(self.params, self.recalculate))
+        f = global_stuff.the_file_manager.get_file_handle(pdb_file_wrapper(self.params), recalculate)
         structure = Bio.PDB.PDBParser().get_structure(self.get_param('name'), f)
         chain = Bio.PDB.PPBuilder().build_peptides(structure[0][self.get_param('chain_letter')])
         to_return = []
         for chain_frag in chain:
             to_return = to_return + chain_frag
         # should raise exception here if error
-        return to_return
+        return to_return[0:2]
 
 class pdb_chain_seq_file_wrapper(file_wrapper):
     
@@ -172,7 +169,7 @@ class pdb_chain_seq_file_wrapper(file_wrapper):
         return ['pdb_name', 'chain_letter']
         
     def constructor(self, recalculate):
-        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params, self.recalculate))
+        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params), recalculate)
         # write the seq file at location + name
         raw_seq_string = ''.join([Polypeptide.three_to_one(res.resname) for res in chain_obj])
         seq = Bio.Seq.Seq(raw_seq_string)
@@ -189,8 +186,10 @@ class pdb_chain_seq_obj_wrapper(obj_wrapper):
         return ['pdb_name', 'chain_letter']
 
     def constructor(self, recalculate):
-        seq_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params, self.recalculate))
-        return SeqIO.read(seq_file_handle, 'fasta')
+        seq_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params), recalculate)
+        pdb.set_trace()
+        asdf = SeqIO.read(seq_file_handle, 'fasta')
+        return asdf
     
 class pdb_chain_blast_results_file_wrapper(file_wrapper):
 
@@ -202,7 +201,7 @@ class pdb_chain_blast_results_file_wrapper(file_wrapper):
 
     def constructor(self, recalculate):
         seq_records = []
-        f = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params, self.recalculate))
+        f = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params), recalculate)
         query = SeqIO.parse(f, 'fasta')
         seq_records.append(query)
         print 'RUNNING BLAST!!!!!!!'
@@ -219,9 +218,25 @@ class pdb_chain_aa_to_pos_obj_wrapper(obj_wrapper):
         return ['pdb_name', 'chain_letter']
     
     def constructor(self, recalculate):
-        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params, self.recalculate))
+        chain_obj = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params), recalculate)
         chain_positions = [chain_obj[j].get_id()[1] for j in range(len(chain_obj))]
-        return chain_positions 
+        return chain_positions
+
+
+class pdb_chain_pos_to_aa_dict_obj_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return ['pdb_name', 'chain_letter']
+
+    def constructor(self, recalculate):
+        aa_to_pos = global_stuff.the_obj_manager.get_variable(pdb_chain_aa_to_pos_obj_wrapper(self.params), recalculate)
+        pos_to_aa_dict = {}
+        for i in range(len(aa_to_pos)):
+            pos_to_aa_dict[aa_to_pos[i]] = i
+        return pos_to_aa_dict
 
 class pdb_chain_msa_input_file_wrapper(file_wrapper):
 
@@ -233,12 +248,12 @@ class pdb_chain_msa_input_file_wrapper(file_wrapper):
 
     def constructor(self, recalculate):
         # parse blast xml file, then do processing
-        blast_xml_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_blast_results_file_wrapper(self.params, recalculate))
+        blast_xml_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_blast_results_file_wrapper(self.params), recalculate)
         record = NCBIXML.read(blast_xml_handle)
         seen = set()
         seq_records = []
         # add the query sequence, and have a set so that only add each sequence once
-        query = global_stuff.the_obj_manager.get_variable(pdb_chain_seq_obj_wrapper(self.params, self.recalculate))
+        query = global_stuff.the_obj_manager.get_variable(pdb_chain_seq_obj_wrapper(self.params), recalculate)
         seq_records.append(query)
         seen.add(query.seq.tostring())
         # add high scoring pairs in alignments with sufficiently low evalue that have not been seen
@@ -269,13 +284,15 @@ class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
             raise RuntimeError
 
     def constructor(self, recalculate):
-        residues = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params, self.recalculate))
+        residues = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params), recalculate)
         rep_atoms = [self.get_representative_atom(res) for res in residues]
         num_res = len(residues)
         dists = [[-1 for i in range(num_res)] for j in range(num_res)]
         for i in range(num_res):
             for j in range(num_res):
                 dists[i][j] = rep_atoms[i] - rep_atoms[j]
+        #print dists
+        pdb.set_trace()
         return dists
 
 class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
@@ -287,7 +304,7 @@ class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
         return['pdb_name', 'chain_letter']
 
     def constructor(self, recalculate):
-        dists = global_stuff.the_obj_manager.get_variable(pdb_chain_pairwise_distance_obj_wrapper(self.params, self.recalculate))
+        dists = global_stuff.the_obj_manager.get_variable(pdb_chain_pairwise_distance_obj_wrapper(self.params), recalculate)
         inv_avg_dists = [-1 for i in range(len(dists))]
         for i in range(len(dists)):
             val = 0;
@@ -305,7 +322,7 @@ class pdb_chain_msa_file_wrapper(file_wrapper):
         return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
 
     def constructor(self, recalculate):
-        msa_input_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_input_file_wrapper(self.params, recalculate))
+        msa_input_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_input_file_wrapper(self.params), recalculate)
         cline = MuscleCommandline(cmd = global_stuff.MUSCLE_PATH, input = msa_input_handle.name, out = self.get_file_location(), clw = False, maxiters = 2)
         cline()
 
@@ -318,18 +335,16 @@ class pdb_chain_conservation_score_file_wrapper(file_wrapper):
         return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
 
     def constructor(self, recalculate):
-        msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_file_wrapper(self.params, recalculate))
+        msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_file_wrapper(self.params), recalculate)
         args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), msa_file_handle.name]
         subprocess.Popen(args)
 
-
-class crf_obj_wrapper(obj_wrapper):
+class pdb_chain_conservation_score_obj_wrapper(obj_wrapper):
 
     def get_hard_coded_params(self):
-        return param({'location':constants.BIN_FOLDER})
+        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100})
 
     def get_self_param_keys(self):
-        return['pdb_name', 'chain_letter', 'dist_cut_off']
+        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
 
-    def constructor(self, recalculate):
-        return crf(self.params, recalculate)
+#    def constructor(self, recalculate):
