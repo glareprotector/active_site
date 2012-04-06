@@ -8,7 +8,7 @@ import string
 
 FILE_MANAGER_SIZE = 500
 OBJ_MANAGER_SIZE = 500
-
+MUSCLE_PATH = '/home/fultonw/muscle3.8.31_i86linux64'
 
 
 
@@ -16,7 +16,10 @@ the_obj_manager = obj_manager()
 the_file_manager = file_manager()
 
 BLAST_PATH = 'psiblast'
-CONSERVATION = '/home/fultonw/conservation_code'
+CONSERVATION_FOLDER = '/home/fultonw/conservation_code/'
+
+ORIG_CHAINS = '../chains_to_use.txt'
+CSA_FILE = '../CSA_2_2_12.dat'
 
 def get_transpose(mat):
     height = len(mat)
@@ -35,7 +38,7 @@ def dict_deep_copy(d):
 
 def write_mat(mat, f_name, the_sep = ','):
     f = open(f_name, 'w')
-    print mat
+    #print mat
     for row in mat:
         
         line = string.join([str(x) for x in row], sep=the_sep)

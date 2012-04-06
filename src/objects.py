@@ -15,6 +15,7 @@ from Bio.Blast.Applications import NcbipsiblastCommandline
 from Bio.PDB import Polypeptide
 from Bio.Blast import NCBIXML
 from Bio.Align.Applications import MuscleCommandline
+from Bio import AlignIO
 
 import subprocess
 import string
@@ -74,9 +75,12 @@ class wrapper(object):
                 
     def get_name(self):
         return self.get_param('name')
+
+    def __str__(self):
+        return self.get_name()
     
     def get_hard_coded_params(self):
-        raise NotImplementedError
+        return param({})
     
     def get_param(self,key):
         return self.params.get_param(key)
@@ -88,7 +92,7 @@ class wrapper(object):
         return self.params.has_param(key)
     # stores which params are relevant to the function.  
     def get_self_param_keys(self):
-        raise NotImplementedError
+        return []
     
     def get_self_params(self, inherited_params):
         hard_coded_params = self.get_hard_coded_params()
@@ -97,6 +101,8 @@ class wrapper(object):
     def set_name(self):
         bits = [str(param) + '-' + str(self.get_param(param)) for param in self.get_self_param_keys()]
         bits.append(self.__class__.__name__)
+        #print bits
+        #pdb.set_trace()
         val = string.join(bits, sep='@')
         self.set_param('name', val)
     
@@ -158,7 +164,7 @@ class pdb_chain_wrapper(obj_wrapper):
         for chain_frag in chain:
             to_return = to_return + chain_frag
         # should raise exception here if error
-        return to_return[0:2]
+        return to_return
 
 class pdb_chain_seq_file_wrapper(file_wrapper):
     
@@ -187,7 +193,7 @@ class pdb_chain_seq_obj_wrapper(obj_wrapper):
 
     def constructor(self, recalculate):
         seq_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_seq_file_wrapper(self.params), recalculate)
-        pdb.set_trace()
+        #pdb.set_trace()
         asdf = SeqIO.read(seq_file_handle, 'fasta')
         return asdf
     
@@ -206,7 +212,8 @@ class pdb_chain_blast_results_file_wrapper(file_wrapper):
         seq_records.append(query)
         print 'RUNNING BLAST!!!!!!!'
         psi_blast_cline = NcbipsiblastCommandline(cmd = global_stuff.BLAST_PATH, outfmt = 5, query = f.name, db = 'nr', out = self.get_file_location())
-        subprocess.Popen(str(psi_blast_cline), shell=True, executable='/bin/bash')
+        subprocess.call(str(psi_blast_cline), shell=True, executable='/bin/bash')
+        #pdb.set_trace()
 
     
 class pdb_chain_aa_to_pos_obj_wrapper(obj_wrapper):
@@ -254,6 +261,7 @@ class pdb_chain_msa_input_file_wrapper(file_wrapper):
         seq_records = []
         # add the query sequence, and have a set so that only add each sequence once
         query = global_stuff.the_obj_manager.get_variable(pdb_chain_seq_obj_wrapper(self.params), recalculate)
+        query.id = 'QUERY'
         seq_records.append(query)
         seen.add(query.seq.tostring())
         # add high scoring pairs in alignments with sufficiently low evalue that have not been seen
@@ -292,7 +300,7 @@ class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
             for j in range(num_res):
                 dists[i][j] = rep_atoms[i] - rep_atoms[j]
         #print dists
-        pdb.set_trace()
+        #pdb.set_trace()
         return dists
 
 class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
@@ -326,6 +334,40 @@ class pdb_chain_msa_file_wrapper(file_wrapper):
         cline = MuscleCommandline(cmd = global_stuff.MUSCLE_PATH, input = msa_input_handle.name, out = self.get_file_location(), clw = False, maxiters = 2)
         cline()
 
+class pdb_chain_processed_msa_file_wrapper(file_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100})
+
+    def get_self_param_keys(self):
+        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
+
+    def constructor(self, recalculate):
+        f = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_file_wrapper(self.params), recalculate)
+        msa = AlignIO.read(f.name, 'fasta')
+        # search for the query sequence
+        idx = -1
+        for i in range(len(msa)):
+            if msa[i].id == 'QUERY':
+                idx = i
+                break
+        print 'AAAAAAAAAAAAAAAAAAAAAAAAAAAA', idx
+        #pdb.set_trace()
+        # find the first non-insertion column
+        i = 0
+        while msa[idx,i] == '-':
+            print msa[idx,i]
+            i = i + 1
+            print idx, i
+        to_return = msa[:,i:(i+1)]
+        print 'EEEEEEEEEEEEEEE'
+        # add in all the other columns
+        for k in range(i+1, msa.get_alignment_length()):
+            if msa[idx,k] != '-':
+                print k
+                to_return = to_return + msa[:,k:(k+1)]
+        AlignIO.write(to_return, open(self.get_file_location(),'w'), 'fasta')
+
 class pdb_chain_conservation_score_file_wrapper(file_wrapper):
 
     def get_hard_coded_params(self):
@@ -335,9 +377,9 @@ class pdb_chain_conservation_score_file_wrapper(file_wrapper):
         return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
 
     def constructor(self, recalculate):
-        msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_msa_file_wrapper(self.params), recalculate)
+        msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_processed_msa_file_wrapper(self.params), recalculate)
         args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), msa_file_handle.name]
-        subprocess.Popen(args)
+        subprocess.call(args)
 
 class pdb_chain_conservation_score_obj_wrapper(obj_wrapper):
 
@@ -347,4 +389,14 @@ class pdb_chain_conservation_score_obj_wrapper(obj_wrapper):
     def get_self_param_keys(self):
         return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
 
-#    def constructor(self, recalculate):
+    def constructor(self, recalculate):
+        #pdb.set_trace()
+        f = global_stuff.the_file_manager.get_file_handle(pdb_chain_conservation_score_file_wrapper(self.params), recalculate)
+        f.readline()
+        f.readline()
+        to_return = []
+        for line in f:
+            s = string.split(line, sep='\t')
+            to_return.append(float(s[1]))
+        return to_return
+
