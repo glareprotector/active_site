@@ -33,8 +33,11 @@ class crf(object):
         # add categorical variable for the nucleotide
         temp_params = param({'g_wrapper':get_residue_function_wrapper(), 'indicator_values_list':[ [x] for x in constants.AMINO_ACID_LIST]})
         res_cat = global_stuff.the_obj_manager.get_variable(categorical_function_wrapper(temp_params), self.recalculate)
-        #pdb.set_trace()
         feature_wrappers.extend(res_cat)
+        # add feature for which of charged, polar, hydrophobic the amino acid belongs to
+        temp_params = param({'g_wrapper':get_residue_function_wrapper(), 'indicator_values_list':constants.AMINO_ACID_CATEGORIES})
+        res_type_cat = global_stuff.the_obj_manager.get_variable(categorical_function_wrapper(temp_params), self.recalculate)
+        feature_wrappers.extend(res_type_cat)
         return feature_wrappers
         
 
@@ -89,11 +92,18 @@ class crf(object):
         m = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(self.params), self.recalculate)
         f = open(global_stuff.CSA_FILE,'r')
         f.readline()
+        print m.keys()
         for line in f:
             s = string.split(line, sep=',')
             pos = int(s[4])
             if string.upper(s[0]) == string.upper(self.params.get_param('pdb_name')) and string.upper(s[3]) == string.upper(self.params.get_param('chain_letter')):
+                #try:
+                #if pos not in m.keys():
+                #    pdb.set_trace()
+
                 true_y[m[pos]] = 2
+                #except Exception as e:
+                #    print 'ERROR: map key out of bounds', pos, m.keys()
         return true_y
 
     # writes to file all the info needed for training
@@ -140,10 +150,10 @@ class crf(object):
 
 
         # need map from position in residues to true class.  can do this by reading in file, but for now assign randomly
-        self.true_y = self.get_true_y()
         self.node_map, self.edge_map, self.numParams = self.get_maps()
         self.Xnode = self.get_Xnode()
         self.Xedge = self.get_Xedge()
+        self.true_y = self.get_true_y()
 
         self.numNodes = len(self.residues)
         self.numEdges = len(self.edges)

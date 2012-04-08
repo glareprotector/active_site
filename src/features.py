@@ -17,7 +17,7 @@ class indicator_function_wrapper(obj_wrapper):
 
     def constructor(self, recalculate):
         #pdb.set_trace()
-        g = global_stuff.the_obj_manager.get_variable(self.get_param('g_wrapper'))
+        g = global_stuff.the_obj_manager.get_variable(self.get_param('g_wrapper'), use_pickle = False, to_pickle = False)
         
         # params is whatever g needs to fetch the value
         def f(params):
@@ -54,6 +54,7 @@ class get_residue_function_wrapper(obj_wrapper):
         def f(params):
             seq = global_stuff.the_obj_manager.get_variable(pdb_chain_seq_obj_wrapper(params), recalculate)
             map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
+            assert len(seq) == len(map.keys())
             aa = seq[map[params.get_param('pos')]]
             return aa
         
@@ -91,8 +92,9 @@ class conservation_feature_function_wrapper(obj_wrapper):
         def f(params):
 
             scores = global_stuff.the_obj_manager.get_variable(pdb_chain_conservation_score_obj_wrapper(params), recalculate)
-            map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
-            return scores[map[params.get_param('pos')]]
+            the_map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
+            assert len(scores) == len(the_map.keys())
+            return scores[the_map[params.get_param('pos')]]
 
         return f
 

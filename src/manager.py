@@ -25,8 +25,8 @@ class obj_manager(object):
     returns the variable with the desired name.  pickles and caches if desired
     '''
     def get_variable(self, the_obj_wrapper, recalculate = False, to_pickle=True, use_pickle=True):
-        to_pickle = False
-        use_pickle = False
+        #to_pickle = False
+        #use_pickle = False
         pickle_file = the_obj_wrapper.get_pickle_location()
         #print 'AAAAAAAAAAAAAAAAA', the_obj_wrapper.get_pickle_location(), recalculate
         if self.has_in_cache(the_obj_wrapper.get_name()):

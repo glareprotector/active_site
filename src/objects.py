@@ -289,7 +289,8 @@ class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
             return res['CB']
         else:
             print 'no CA or CB atom in residue'
-            raise RuntimeError
+            #pdb.set_trace()
+            return res.child_list[0]
 
     def constructor(self, recalculate):
         residues = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params), recalculate)
@@ -298,7 +299,11 @@ class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
         dists = [[-1 for i in range(num_res)] for j in range(num_res)]
         for i in range(num_res):
             for j in range(num_res):
-                dists[i][j] = rep_atoms[i] - rep_atoms[j]
+                try:
+                    dists[i][j] = rep_atoms[i] - rep_atoms[j]
+                except Exception as e:
+                    print 'ERROR: distance fail', self.params, i, j, residues[i].child_dict.keys(), residues[j].child_dict.keys()
+                    dists[i][j] = -1
         #print dists
         #pdb.set_trace()
         return dists
@@ -316,9 +321,12 @@ class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
         inv_avg_dists = [-1 for i in range(len(dists))]
         for i in range(len(dists)):
             val = 0;
+            count = 0
             for j in range(len(dists)):
-                val = val + dists[i][j]
-            inv_avg_dists[i] = 1.0 / (val / len(dists))
+                if dists[i][j] != -1:
+                    val = val + dists[i][j]
+                    count = count + 1
+            inv_avg_dists[i] = 1.0 / (val / count)
         return inv_avg_dists
 
 class pdb_chain_msa_file_wrapper(file_wrapper):
@@ -351,43 +359,43 @@ class pdb_chain_processed_msa_file_wrapper(file_wrapper):
             if msa[i].id == 'QUERY':
                 idx = i
                 break
-        print 'AAAAAAAAAAAAAAAAAAAAAAAAAAAA', idx
+        #print 'AAAAAAAAAAAAAAAAAAAAAAAAAAAA', idx
         #pdb.set_trace()
         # find the first non-insertion column
         i = 0
         while msa[idx,i] == '-':
-            print msa[idx,i]
+            #print msa[idx,i]
             i = i + 1
-            print idx, i
+            #print idx, i
         to_return = msa[:,i:(i+1)]
         print 'EEEEEEEEEEEEEEE'
         # add in all the other columns
         for k in range(i+1, msa.get_alignment_length()):
             if msa[idx,k] != '-':
-                print k
+                #print k
                 to_return = to_return + msa[:,k:(k+1)]
         AlignIO.write(to_return, open(self.get_file_location(),'w'), 'fasta')
 
 class pdb_chain_conservation_score_file_wrapper(file_wrapper):
 
     def get_hard_coded_params(self):
-        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100})
+        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100, 'conservation_method':'shannon_entropy', 'use_gap_penalty':False})
 
     def get_self_param_keys(self):
-        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
+        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num', 'conservation_method', 'use_gap_penalty']
 
     def constructor(self, recalculate):
         msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_processed_msa_file_wrapper(self.params), recalculate)
-        args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), msa_file_handle.name]
+        args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), '-s', self.get_param('conservation_method'), '-g', str(self.get_param('gap_cutoff')), msa_file_handle.name]
         subprocess.call(args)
 
 class pdb_chain_conservation_score_obj_wrapper(obj_wrapper):
 
     def get_hard_coded_params(self):
-        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100})
+        return param({'location':constants.BIN_FOLDER, 'evalue':1e-10, 'msa_maxiter':4, 'msa_input_max_num':100, 'conservation_method':'shannon_entropy', 'use_gap_penalty':False})
 
     def get_self_param_keys(self):
-        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num']
+        return['pdb_name', 'chain_letter', 'evalue', 'msa_maxiter', 'msa_input_max_num', 'conservation_method', 'use_gap_penalty']
 
     def constructor(self, recalculate):
         #pdb.set_trace()

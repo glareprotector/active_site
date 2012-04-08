@@ -21,6 +21,9 @@ CONSERVATION_FOLDER = '/home/fultonw/conservation_code/'
 ORIG_CHAINS = '../chains_to_use.txt'
 CSA_FILE = '../CSA_2_2_12.dat'
 
+success_file = 'success.txt'
+fail_file = 'fail.txt'
+
 def get_transpose(mat):
     height = len(mat)
     width = len(mat[0])
