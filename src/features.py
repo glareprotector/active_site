@@ -5,23 +5,72 @@ contains the function wrapper classes(made them wrappers so that i could retriev
 
 from objects import *
 
+# returns function that returns 1 if the argument is in indicator_values
+# params should contain g_wrapper - a function wrapper for how to get the value, and indicator_values = the values to match
 class indicator_function_wrapper(obj_wrapper):
 
     def get_hard_coded_params(self):
         return param({'location':constants.BIN_FOLDER})
 
     def get_self_param_keys(self):
-        return ['indicator_value']
+        return ['g_wrapper', 'indicator_values']
+
+    def constructor(self, recalculate):
+        #pdb.set_trace()
+        g = global_stuff.the_obj_manager.get_variable(self.get_param('g_wrapper'), use_pickle = False, to_pickle = False)
+        
+        # params is whatever g needs to fetch the value
+        def f(params):
+            return int(g(params) in self.get_param('indicator_values'))
+
+        return f
+
+class ones_function_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+            return param({'location':constants.BIN_FOLDER})
+
+    def constructor(self, recalculate):
+
+        def f(params):
+            return 1
+        
+        return f
+
+
+# returns the list of indicator function wrappers associated with a categorical variable
+class categorical_function_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return ['g_wrapper', 'indicator_values_list']
+
+    def constructor(self, recalculate):
+        to_return = []
+        for iv in self.get_param('indicator_values_list'):
+            self.params.set_param('indicator_values', iv)
+            to_return.append(indicator_function_wrapper(self.params))
+        return to_return
+
+class get_residue_function_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return []
 
     def constructor(self, recalculate):
         
-        # params should have a 'x' which is the variable being matched
         def f(params):
-            if params.get_param('x') == self.get_param('indicator_value'):
-                return 1
-            else:
-                return 0
-
+            seq = global_stuff.the_obj_manager.get_variable(pdb_chain_seq_obj_wrapper(params), recalculate)
+            map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
+            assert len(seq) == len(map.keys())
+            aa = seq[map[params.get_param('pos')]]
+            return aa
+        
         return f
 
 class inverse_average_distance_feature_function_wrapper(obj_wrapper):
@@ -36,10 +85,26 @@ class inverse_average_distance_feature_function_wrapper(obj_wrapper):
         
         # params should have pdb name, chain letter, pos
         def f(params):
-            inv_dists = global_stuff.the_obj_manager.get_variable(pdb_chain_inverse_average_distances_obj_wrapper(params, recalculate))
-            map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params, recalculate))
+            inv_dists = global_stuff.the_obj_manager.get_variable(pdb_chain_inverse_average_distances_obj_wrapper(params), recalculate)
+            map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
             return inv_dists[map[params.get_param('pos')]]
         
+        return f
+
+class b_factor_feature_function_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def constructor(self, recalculate):
+
+        # params should contain pdb_name, chain_letter, pos
+        def f(params):
+            the_map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
+            chain = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(params), recalculate)
+            res = chain[the_map[params.get_param('pos')]]
+            return global_stuff.get_representative_atom(res).get_bfactor()
+
         return f
         
 class conservation_feature_function_wrapper(obj_wrapper):
@@ -55,9 +120,14 @@ class conservation_feature_function_wrapper(obj_wrapper):
         # params is params object that will specify pdb_name, chain_letter, pos
         def f(params):
 
-            scores = global_stuff.the_obj_manager.get_variable(pdb_chain_conservation_score_obj_wrapper(params, recalculate))
-            map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params, recalculate))
-            return scores[map[params.get_param('pos')]]
+            scores = global_stuff.the_obj_manager.get_variable(pdb_chain_conservation_score_obj_wrapper(params), recalculate)
+            the_map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
+            assert len(scores) == len(the_map.keys())
+            raw_score = scores[the_map[params.get_param('pos')]]
+            if raw_score < 0:
+                return 0
+            else:
+                return raw_score
 
         return f
 

@@ -11,7 +11,9 @@ class cache(object):
         self.the_dict = {}
         
     def has(self, cache_name):
-        return cache_name in self.the_dict.keys()
+        ans = cache_name in self.the_dict.keys()
+        #print 'FFFFFFFFFFFFFFFFFFFF', ans, cache_name, self.the_dict.keys()
+        return ans
     
     def put(self, obj, cache_name):
         self.the_dict[cache_name] = obj
