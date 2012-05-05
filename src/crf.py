@@ -12,6 +12,7 @@ import random
 from features import *
 import pdb
 import math
+import random
 
 class node(object):
 
@@ -29,7 +30,8 @@ class edge(object):
 class crf(object):
 
     def get_feature_function_wrappers(self):
-        feature_wrappers = [inverse_average_distance_feature_function_wrapper(), conservation_feature_function_wrapper()]
+        feature_wrappers = [ones_function_wrapper(), inverse_average_distance_feature_function_wrapper(), conservation_feature_function_wrapper(), b_factor_feature_function_wrapper()]
+        #feature_wrappers = [b_factor_feature_function_wrapper()]
         # add categorical variable for the nucleotide
         temp_params = param({'g_wrapper':get_residue_function_wrapper(), 'indicator_values_list':[ [x] for x in constants.AMINO_ACID_LIST]})
         res_cat = global_stuff.the_obj_manager.get_variable(categorical_function_wrapper(temp_params), self.recalculate)
@@ -53,6 +55,7 @@ class crf(object):
         k = 1 # matlab indices are 1-based
         num_states = len(self.y_range)
         num_features = len(self.get_feature_function_wrappers())
+        #pdb.set_trace()
         node_map = [ [-1 for i in range(num_features)] for j in range(num_states)]
         for s in range(num_states):
             for f in range(num_features):
@@ -89,21 +92,41 @@ class crf(object):
     # reads data file to get the true label for each position
     def get_true_y(self):
         true_y = [1 for i in range(len(self.residues))]
+
+
+        aa_to_pos = global_stuff.the_obj_manager.get_variable(pdb_chain_aa_to_pos_obj_wrapper(self.params), self.recalculate)
+        g = global_stuff.the_obj_manager.get_variable(b_factor_feature_function_wrapper(self.params), self.recalculate)
+
+        #for i in range(len(true_y)):
+        #    print i
+        #    temp_params = self.params.get_copy()
+        #    temp_params.set_param('pos', aa_to_pos[i])
+        #    bf = g(temp_params)
+        #    if random.uniform(0,100) > bf:
+        #        true_y[i] = 2
+        #return true_y
+
+
+
+
         m = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(self.params), self.recalculate)
         f = open(global_stuff.CSA_FILE,'r')
         f.readline()
-        print m.keys()
+        #print m.keys()
         for line in f:
             s = string.split(line, sep=',')
-            pos = int(s[4])
-            if string.upper(s[0]) == string.upper(self.params.get_param('pdb_name')) and string.upper(s[3]) == string.upper(self.params.get_param('chain_letter')):
+            pos = int(s[2])
+            if string.upper(s[0]) == string.upper(self.params.get_param('pdb_name')) and string.upper(s[1]) == string.upper(self.params.get_param('chain_letter')):
                 #try:
-                #if pos not in m.keys():
+                #    if pos not in m.keys():
                 #    pdb.set_trace()
 
                 true_y[m[pos]] = 2
                 #except Exception as e:
                 #    print 'ERROR: map key out of bounds', pos, m.keys()
+
+
+
         return true_y
 
     # writes to file all the info needed for training
@@ -122,6 +145,14 @@ class crf(object):
         
         self.params = params
         self.recalculate = recalculate
+
+        # if chain letter is not specified in params, figure out what it is
+        if self.params.get_param('chain_letter') == '-1':
+            structure = global_stuff.the_obj_manager.get_variable(pdb_obj_wrapper(self.params))
+            self.params.set_param('chain_letter',structure[0].child_dict.keys()[0])
+
+
+
         
         res_dists = global_stuff.the_obj_manager.get_variable(pdb_chain_pairwise_distance_obj_wrapper(self.params), self.recalculate)
         aa_to_pos = global_stuff.the_obj_manager.get_variable(pdb_chain_aa_to_pos_obj_wrapper(self.params), self.recalculate)
@@ -142,7 +173,12 @@ class crf(object):
         # add residues within dist_cut_off to edges.  also create adj_mat matlab will use for edge_struct
         for i in range(len(chain_seq)):
             for j in range(i):
-                if res_dists[i][j] < self.params.get_param('dist_cut_off') and math.fabs(i-j) > 5:
+                if math.fabs(i-j) == 1:
+                    self.edges.append(edge(self.residues[i], self.residues[j]))
+                    self.adj_mat[i][j] = 1
+                    self.adj_mat[j][i] = 1
+
+                elif res_dists[i][j] < self.params.get_param('dist_cut_off') and math.fabs(i-j) > 5:
                     self.edges.append(edge(self.residues[i], self.residues[j]))
                     self.adj_mat[i][j] = 1
                     self.adj_mat[j][i] = 1

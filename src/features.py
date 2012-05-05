@@ -25,6 +25,19 @@ class indicator_function_wrapper(obj_wrapper):
 
         return f
 
+class ones_function_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+            return param({'location':constants.BIN_FOLDER})
+
+    def constructor(self, recalculate):
+
+        def f(params):
+            return 1
+        
+        return f
+
+
 # returns the list of indicator function wrappers associated with a categorical variable
 class categorical_function_wrapper(obj_wrapper):
 
@@ -77,6 +90,22 @@ class inverse_average_distance_feature_function_wrapper(obj_wrapper):
             return inv_dists[map[params.get_param('pos')]]
         
         return f
+
+class b_factor_feature_function_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def constructor(self, recalculate):
+
+        # params should contain pdb_name, chain_letter, pos
+        def f(params):
+            the_map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
+            chain = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(params), recalculate)
+            res = chain[the_map[params.get_param('pos')]]
+            return global_stuff.get_representative_atom(res).get_bfactor()
+
+        return f
         
 class conservation_feature_function_wrapper(obj_wrapper):
 
@@ -94,7 +123,11 @@ class conservation_feature_function_wrapper(obj_wrapper):
             scores = global_stuff.the_obj_manager.get_variable(pdb_chain_conservation_score_obj_wrapper(params), recalculate)
             the_map = global_stuff.the_obj_manager.get_variable(pdb_chain_pos_to_aa_dict_obj_wrapper(params), recalculate)
             assert len(scores) == len(the_map.keys())
-            return scores[the_map[params.get_param('pos')]]
+            raw_score = scores[the_map[params.get_param('pos')]]
+            if raw_score < 0:
+                return 0
+            else:
+                return raw_score
 
         return f
 

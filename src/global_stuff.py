@@ -5,6 +5,7 @@ Created on Mar 9, 2012
 '''
 from manager import *
 import string
+import Bio.PDB
 
 FILE_MANAGER_SIZE = 500
 OBJ_MANAGER_SIZE = 500
@@ -18,11 +19,11 @@ the_file_manager = file_manager()
 BLAST_PATH = 'psiblast'
 CONSERVATION_FOLDER = '/home/fultonw/conservation_code/'
 
-ORIG_CHAINS = '../chains_to_use.txt'
-CSA_FILE = '../CSA_2_2_12.dat'
+ORIG_CHAINS = '../catres_pdbs'
+CSA_FILE = '../catres_sites'
 
-success_file = 'success.txt'
-fail_file = 'fail.txt'
+success_file = 'success_catres.txt'
+fail_file = 'fail_catres.txt'
 
 def get_transpose(mat):
     height = len(mat)
@@ -39,8 +40,8 @@ def dict_deep_copy(d):
         to_return[key] = d[key]
     return to_return
 
-def write_mat(mat, f_name, the_sep = ','):
-    f = open(f_name, 'w')
+def write_mat(mat, f_name, the_sep = ',', option = 'w'):
+    f = open(f_name, option)
     #print mat
     for row in mat:
         
@@ -48,3 +49,13 @@ def write_mat(mat, f_name, the_sep = ','):
         line = line + '\n'
         f.write(line)
     f.close()
+
+def get_representative_atom(res):
+    if 'CA' in res.child_dict.keys():
+        return res['CA']
+    elif 'CB' in res.child_dict.keys():
+        return res['CB']
+    else:
+        print 'no CA or CB atom in residue'
+            #pdb.set_trace()
+        return res.child_list[0]

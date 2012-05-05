@@ -147,6 +147,19 @@ class pdb_file_wrapper(file_wrapper):
         print pdb_file_name, self.get_param('location')
         pdbl.retrieve_pdb_file(pdb_file_name, pdir=self.get_param('location'))
         subprocess.call(['mv', self.get_param('location') + string.lower('pdb'+pdb_file_name+'.ent'), self.get_file_location()])
+
+class pdb_obj_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+    
+    def get_self_param_keys(self):
+        return ['pdb_name']
+
+    def constructor(self, recalculate):
+        f = global_stuff.the_file_manager.get_file_handle(pdb_file_wrapper(self.params), recalculate)    
+        structure = Bio.PDB.PDBParser().get_structure(self.get_param('name'), f)
+        return structure
         
 class pdb_chain_wrapper(obj_wrapper):
     
@@ -282,19 +295,9 @@ class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
     def get_self_param_keys(self):
         return['pdb_name', 'chain_letter']
     
-    def get_representative_atom(self, res):
-        if 'CA' in res.child_dict.keys():
-            return res['CA']
-        elif 'CB' in res.child_dict.keys():
-            return res['CB']
-        else:
-            print 'no CA or CB atom in residue'
-            #pdb.set_trace()
-            return res.child_list[0]
-
     def constructor(self, recalculate):
         residues = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params), recalculate)
-        rep_atoms = [self.get_representative_atom(res) for res in residues]
+        rep_atoms = [global_stuff.get_representative_atom(res) for res in residues]
         num_res = len(residues)
         dists = [[-1 for i in range(num_res)] for j in range(num_res)]
         for i in range(num_res):
@@ -386,7 +389,7 @@ class pdb_chain_conservation_score_file_wrapper(file_wrapper):
 
     def constructor(self, recalculate):
         msa_file_handle = global_stuff.the_file_manager.get_file_handle(pdb_chain_processed_msa_file_wrapper(self.params), recalculate)
-        args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), '-s', self.get_param('conservation_method'), '-g', str(self.get_param('gap_cutoff')), msa_file_handle.name]
+        args = ['python', global_stuff.CONSERVATION_FOLDER+'score_conservation.py', '-m', global_stuff.CONSERVATION_FOLDER+'matrix/'+'blosum50.bla', '-o', self.get_file_location(), '-s', self.get_param('conservation_method'), '-p', str(self.get_param('use_gap_penalty')), msa_file_handle.name]
         subprocess.call(args)
 
 class pdb_chain_conservation_score_obj_wrapper(obj_wrapper):
