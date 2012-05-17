@@ -3,10 +3,6 @@ Implement helper array classes here
 */
 
 #include <vector>
-<<<<<<< HEAD
-#include <iostream>
-=======
->>>>>>> 0151e131f606b906a4012a731159d741f266ca71
 
 typedef double num;
 
@@ -21,14 +17,10 @@ class array_1d{
   int len1;
 
   array_1d(int len, int fill = 0){
-<<<<<<< HEAD
-    m_data = vector<T>(len, fill);
-=======
     m_data = vector<T>(len);
     for(int i = 0; i < len; i++){
       m_data[i] = fill;
     }
->>>>>>> 0151e131f606b906a4012a731159d741f266ca71
     this->len1 = len;
   }
 
@@ -39,32 +31,9 @@ class array_1d{
     return m_data[x];
   }
 
-<<<<<<< HEAD
-  void append(T x){
-    m_data.push_back(x);
-  }
-
-  //friend ostream& operator<<(ostream& os, const array_1d<T>& ar);
-
 };
 
 template <class T>
-ostream& operator<<(ostream& os, const array_1d<T>& ar){
-  //os<<"length: "<<ar.len1<<endl;
-  for(int i = 0; i < ar.len1; i++){
-    //os<<i<<endl;
-    os<<ar.m_data[i]<<" ";
-  }
-  //cout<<"end1d"<<endl;
-  return os;
-}
-
-template <class T>
-=======
-};
-
-template <class T>
->>>>>>> 0151e131f606b906a4012a731159d741f266ca71
 class array_2d{
 
  public:
@@ -81,14 +50,8 @@ class array_2d{
     this->len2 = len2;
   }
 
-<<<<<<< HEAD
-  array_2d(){
-    m_data = vector< array_1d<T> >(0, array_1d<T>());
-  }
-=======
   array_2d()
     :m_data(array_2d(0,0)){}
->>>>>>> 0151e131f606b906a4012a731159d741f266ca71
 
   T& operator() (int i, int j){
     return m_data[i](j);
@@ -97,23 +60,6 @@ class array_2d{
 };
 
 template <class T>
-<<<<<<< HEAD
-ostream& operator<<(ostream& os, const array_2d<T>& ar){
-  //cout<<"2dlen: "<<ar.len1<<endl;
-  for(int i = 0; i < ar.len1; i++){
-    //cout<<"QQ"<<i<<endl;
-    //cout<<ar.m_data.size()<<endl;
-    //    cout<<ar.m_data[i]<<endl;
-     os<<ar.m_data[i]<<endl;
-    //os<<endl;
-    //cout<<"WW"<<endl;
-  }
-  return os;
-}
-
-template <class T>
-=======
->>>>>>> 0151e131f606b906a4012a731159d741f266ca71
 class array_3d{
 
  public:
@@ -131,15 +77,8 @@ class array_3d{
     this->len3 = len3;
   }
 
-<<<<<<< HEAD
-  array_3d(){
-    m_data = vector< array_2d<T> >(0, array_2d<T>());
-  }
-    
-=======
   array_3d()
     :m_data(array_3d(0,0,0)){}
->>>>>>> 0151e131f606b906a4012a731159d741f266ca71
 
   T& operator() (int i, int j, int k){
     return m_data[i](j,k);
@@ -148,15 +87,6 @@ class array_3d{
 };
 
 template <class T>
-<<<<<<< HEAD
-ostream& operator<<(ostream& os, const array_3d<T>& ar){
-  for(int i = 0; i < ar.len1; i++){
-    os<<"("<<i<<")"<<endl;
-    os<<ar.m_data[i]<<endl;
-  }
-  return os;
-}
-=======
 class array_4d{
 
  public:
@@ -183,4 +113,4 @@ class array_4d{
   }
 
 };
->>>>>>> 0151e131f606b906a4012a731159d741f266ca71
+
