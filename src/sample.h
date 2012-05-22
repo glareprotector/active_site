@@ -1,3 +1,4 @@
+// TEST
 /*
 This class is responsible for reading in 
 1. node features (numNodes x numNodeFeatures)
