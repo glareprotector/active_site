@@ -47,7 +47,11 @@ class arbi_array{
 
 
 };
-/*
+
+template <class T>
+ostream& operator<<(ostream& os, const arbi_array<T>& ar);
+
+
 arbi_array<int> read_mat_to_int(string file, int num_row, int num_col);
 
   
@@ -56,10 +60,10 @@ arbi_array<num> read_mat_to_num(string file, int num_row, int num_col);
 arbi_array<int>  read_vect_to_int(string file, int size);
 
 
-template <class T>
-ostream& operator<<(ostream& os, const arbi_array<T>& ar);
-*/
-//#include "nums.cpp"    
+//template <class T>
+//ostream& operator<<(ostream& os, const arbi_array<T>& ar);
+
+#include "nums.cpp"    
 
 
 
