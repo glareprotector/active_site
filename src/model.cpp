@@ -1,4 +1,6 @@
 #include "model.h"
+//#include "nums.h"
+
 
 void model::set_theta(arbi_array<num> _theta){
   this->theta = _theta;
@@ -15,6 +17,7 @@ void model::assign(int num_samples, arbi_array<int>& training_idx, arbi_array<in
 }
 
 sample model::read_sample(string folder_name){
+  /*
   // for now, just hardcode in the sample
   int num_nodes = 2;
   int num_edges = 1;
@@ -35,7 +38,26 @@ sample model::read_sample(string folder_name){
   true_states(1) = 1;
   
   return sample(this, node_features, edge_features, edges, true_states);
+  */
+
+  // first read in info to figure out how many nodes, how many edges.  other params are read in already
+  string info_file = folder_name + string("info.txt");
+  string node_feature_file = folder_name + string("node_features.txt");
+  string edge_features_file = folder_name + string("edge_features.txt");
+  string true_states_file = folder_name + string("true_states.txt");
+  string edge_file = folder_name + string("edges.txt");
+
+  arbi_array<int> info = read_vect_to_int(info_file, 2);
+  int num_nodes = info(0);
+  int num_edges = info(1);
   
+  arbi_array<num> node_features_transposed = read_mat_to_num(node_feature_file, this->num_node_features, num_nodes);
+  arbi_array<num> node_features = arbi_array<num>::transpose(node_features_transposed);
+
+  arbi_array<num> edge_features = read_mat_to_num(edge_features_file, num_edges, this->num_edge_features);
+  arbi_array<int> true_states = read_vect_to_int(true_states_file, num_nodes);
+  arbi_array<int> edges = read_mat_to_int(edge_file, num_edges, 2);
+  return sample(this, node_features, edge_features, edges, true_states);
 }
 
 void model::load_data(arbi_array<string> folder_names){
@@ -66,6 +88,14 @@ model::model(int _num_states, int _num_node_features, int _num_edge_features, ar
   
   // would normally accept a list of folders to read from in load_data, but for now in load data just hardcode a sample
   
+  // should read in num_states, num_node_features, num_edge_features first
+  string model_info_file("asdf/");
+  arbi_array<int> model_info = read_vect_to_int(model_info_file, 3);
+  this->num_states = model_info(0);
+  this->num_node_features = model_info(1);
+  this->num_edge_features = model_info(2);
+
+
   load_data(folder_names);
 }
 
