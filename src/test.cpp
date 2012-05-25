@@ -1,6 +1,6 @@
 #include <iostream>
 #include "model.h"
-
+  
 
 using namespace std;
 

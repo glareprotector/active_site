@@ -1,5 +1,5 @@
 #include "sample.h"
-#include "model.h"
+ #include "model.h"
 
 num sample::get_node_potential(int node, int state){
   return node_potentials(node, state);

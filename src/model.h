@@ -1,7 +1,7 @@
 #ifndef model_h
 #define model_h
 
-#include "sample.h"
+ #include "sample.h"
 
 //#include <string>
 
