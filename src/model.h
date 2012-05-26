@@ -1,4 +1,4 @@
-#ifndef model_h
+ #ifndef model_h
 #define model_h
 
  #include "sample.h"

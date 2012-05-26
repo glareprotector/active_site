@@ -1,5 +1,7 @@
 #include "sample.h"
- #include "model.h"
+// #include "model.h"
+
+#include "model.cpp"
 
 num sample::get_node_potential(int node, int state){
   return node_potentials(node, state);
@@ -163,3 +165,5 @@ num sample::get_likelihood(){
   }
   return temp;
 }
+
+//#include model.cpp

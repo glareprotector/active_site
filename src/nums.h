@@ -63,8 +63,10 @@ arbi_array<int>  read_vect_to_int(string file, int size);
 //template <class T>
 //ostream& operator<<(ostream& os, const arbi_array<T>& ar);
 
+
+
 #include "nums.cpp"    
 
-
-
 #endif
+
+
