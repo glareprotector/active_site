@@ -38,7 +38,7 @@ struct pair_hash{
   size_t operator() (const pair<int,int>& p) const{
     return p.first + p.second;
   }
-};
+ };
 
 //int mean_field_max_iter = 100;
 
