@@ -1,11 +1,14 @@
 #include "model.h"
 #include "LBFGS.h"
+#include <vector>
+#include <mpi.h>
 //#include "nums.h"
 
 // if you change theta, then need to set potentials/marginals
 void model::set_theta(arbi_array<num> _theta){
   // only have to do something if this is a new value of theta
-  if((_theta == theta) == false){
+  //if((_theta == theta) == false){
+  if(true){
     this->theta = _theta;
 
     for(int i = 0; i < num_training; i++){
@@ -59,10 +62,16 @@ sample model::read_sample(string folder_name){
 
   arbi_array<num> edge_features_transposed = read_mat_to_num(edge_features_file, this->num_edge_features, num_edges);
   arbi_array<num> edge_features = arbi_array<num>::transpose(edge_features_transposed);
-  arbi_array<int> true_states = read_vect_to_int(true_states_file, num_nodes, ' ');
+  arbi_array<int> true_states = read_vect_to_int(true_states_file, num_nodes, ',');
   // the true_states file has 1 and 2's, but this program wants 0 and 1's
   for(int i = 0; i < num_nodes; i++){
     true_states(i)--;
+  }
+  cout<<true_states<<endl;
+  for(int i = 0; i < num_nodes; i++){
+    if(true_states(i) != 0){
+      cout<<"FFFFFFFFFFFFFFFF"<<endl;
+    }
   }
   arbi_array<int> edges = read_mat_to_int(edge_file, num_edges, 2);
   return sample(this, node_features, edge_features, edges, true_states, folder_name);
@@ -120,6 +129,7 @@ arbi_array<num> model::get_gradient(){
   for(int i = 0; i < num_training; i++){
     ans = ans + training_data(i).get_gradient();
   }
+  cout<<endl<<"gradient: "<<ans<<endl;
   return ans;
 }
 
@@ -128,13 +138,16 @@ num model::get_likelihood(){
   for(int i = 0; i < num_training; i++){
     ans += training_data(i).get_likelihood();
   }
+  cout<<endl<<"likelihood: "<<ans<<endl;
   return ans;
 }
 
-class my_minimizer: public Minimizer{
+class My_Minimizer: public Minimizer{
  public:
   
   model* p_model;
+
+  My_Minimizer(model* _p_model): Minimizer(false) {p_model = _p_model;};
 
   void ComputeGradient(vector<double>& gradient, const vector<double>& x){
     arbi_array<num> theta(1, x.size());
@@ -155,7 +168,17 @@ class my_minimizer: public Minimizer{
       theta(i) = x[i];
     }
     p_model->set_theta(theta);
-    return p_model->get_likelihood();
+    double ans = p_model->get_likelihood();
+    //cout<<endl<<"function: "<<ans<<endl;
+    return ans;
+  }
+
+  virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length){
+    int s;
+  }
+
+  virtual void Report (const string &s){
+    int s1;
   }
 };
 
@@ -163,11 +186,14 @@ class my_minimizer: public Minimizer{
 
 //#include "sample.cpp"
 
-int main(){
+int main(int argc, char** argv){
 
   //arbi_array<num> tqt = read_mat_to_num(string("test_mat.txt"),2,3);
   //cout<<tqt;
   //return 0;
+
+  MPI_Init(&argc, &argv);
+
   
   cout<<"hello world"<<endl;
 
@@ -226,6 +252,10 @@ int main(){
   theta(29) = 1.3;
   theta(3) = .08;
   theta(30) = .1;
+  theta(54) = .1;
+  theta(55) = .2;
+  theta(56) = .3;
+  theta(57) = .4;
 
   //theta.fill(1);
   //theta(0)=3;
@@ -249,6 +279,8 @@ int main(){
   cout<<s.edge_potentials<<endl;
   cout<<"node_marginals:"<<endl;
   cout<<s.node_marginals<<endl;
+  //cout<<"edge_marginals:"<<endl;
+  //cout<<s.edge_marginals<<endl;
   cout<<"likelihood"<<endl;
   cout<<s.get_likelihood()<<endl;
   cout<<"gradient"<<endl;
@@ -259,6 +291,10 @@ int main(){
   operator<<(cout,grad);
   cout<<"log Z"<<endl;
   cout<<s.get_log_Z()<<endl;
+  cout<<"NLL:"<<endl;
+  num a = s.get_likelihood();
+  cout<<a<<a<<a<<a<<"EEEEEEEEEE"<<endl;
+  //return 0;
   //  (cout<<s.get_gradient());
   /*
 
@@ -289,4 +325,9 @@ int main(){
   for(int i = 0; i < m.num_training; i++){
     cout<<m.training_data(i).folder<<endl;
   }
+  vector<num> w0(num_weights, 0);
+  My_Minimizer* minner = new My_Minimizer(&m);
+  //return 0;
+  minner->LBFGS(w0,30);
+
 }

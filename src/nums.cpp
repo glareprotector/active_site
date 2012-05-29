@@ -153,7 +153,9 @@ T& arbi_array<T>::operator()(...){
 
 template<class T>
 arbi_array<T>::~arbi_array(){
-  delete[] m_data;
+  if(shift_lengths != 0) delete[] shift_lengths;
+  if(dims != 0) delete[] dims;
+  if(m_data != 0) delete[] m_data;
 }
 
 template<class T>

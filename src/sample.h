@@ -29,6 +29,9 @@ It represents one sample.  It supports the following functions (given theta)
 //#include "model.h"
 #include "nums.h"
 
+// MPI global variables
+int proc_id;
+int num_procs;
 
 using namespace std;
 using namespace __gnu_cxx;
