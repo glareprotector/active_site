@@ -1,9 +1,19 @@
 #include "model.h"
+#include "LBFGS.h"
 //#include "nums.h"
 
-
+// if you change theta, then need to set potentials/marginals
 void model::set_theta(arbi_array<num> _theta){
-  this->theta = _theta;
+  // only have to do something if this is a new value of theta
+  if((_theta == theta) == false){
+    this->theta = _theta;
+
+    for(int i = 0; i < num_training; i++){
+      training_data(i).set_node_potentials();
+      training_data(i).set_edge_potentials();
+      training_data(i).set_marginals();
+    }
+  }
 }
 
 
@@ -121,6 +131,33 @@ num model::get_likelihood(){
   return ans;
 }
 
+class my_minimizer: public Minimizer{
+ public:
+  
+  model* p_model;
+
+  void ComputeGradient(vector<double>& gradient, const vector<double>& x){
+    arbi_array<num> theta(1, x.size());
+    for(int i = 0; i < x.size(); i++){
+      theta(i) = x[i];
+    }
+    p_model->set_theta(theta);
+    arbi_array<num> ans = p_model->get_gradient();
+    assert(gradient.size() == ans.linear_length);
+    for(int i = 0; i < gradient.size(); i++){
+      gradient[i] = ans(i);
+    }
+  }
+
+  double ComputeFunction(const vector<double>& x){
+    arbi_array<num> theta(1, x.size());
+    for(int i = 0; i < x.size(); i++){
+      theta(i) = x[i];
+    }
+    p_model->set_theta(theta);
+    return p_model->get_likelihood();
+  }
+};
 
 
 
@@ -198,7 +235,7 @@ int main(){
   for(int i = 0; i < m.num_training; i++){
     m.training_data(i).set_node_potentials();
     m.training_data(i).set_edge_potentials();
-    m.training_data(i).set_node_marginals();
+    m.training_data(i).set_marginals();
   }
 
 

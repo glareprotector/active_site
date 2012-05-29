@@ -31,6 +31,7 @@ class arbi_array{
   arbi_array<T> operator+(const arbi_array<T>&);
 
   arbi_array<T>& operator= (const arbi_array<T>&);
+  bool operator==(const arbi_array<T>&);
 
   void append(T);
 

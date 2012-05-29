@@ -76,7 +76,7 @@ class sample{
   sample();
   void set_node_potentials();
   void set_edge_potentials();
-  void set_node_marginals();
+  void set_marginals();
   num get_likelihood();
   arbi_array<num> get_gradient();
   num get_log_Z();

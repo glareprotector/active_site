@@ -92,7 +92,7 @@ void sample::set_edge_potentials(){
   }
 }
 
-void sample::set_node_marginals(){
+void sample::set_marginals(){
   // make sure prev_marginals is normalized to begin with.  actually doesn't matter if all values are scaled up uniformly
   arbi_array<num>* p_prev_marginals = new arbi_array<num>(2, num_nodes, p_model->num_states);
   p_prev_marginals->fill(1.0 / (double)p_model->num_states);

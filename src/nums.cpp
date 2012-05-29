@@ -107,6 +107,28 @@ void arbi_array<T>::append(T x){
   m_data = new_m_data;
 }
 
+template<class T>
+bool arbi_array<T>::operator==(const arbi_array<T>& ar){
+
+  if(linear_length != ar.linear_length){
+    return false;
+  }
+  if(dim != ar.dim){
+    return false;
+  }
+  for(int i = 0; i < dim; i++){
+    if(dims[i] != ar.dims[i]){
+      return false;
+    }
+  }
+  for(int i = 0; i < linear_length; i++){
+    if(m_data[i] != ar.m_data[i]){
+      return false;
+    }
+  }
+  return true;
+}
+
 
 template<class T>
 int arbi_array<T>::size(int which){

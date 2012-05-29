@@ -35,7 +35,7 @@ class model{
   model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<int> _node_map, arbi_array<int> _edge_map, arbi_array<string> folder_names);
   arbi_array<num> get_gradient();
   num get_likelihood();
-
+  
 
 };
 
