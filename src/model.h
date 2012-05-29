@@ -2,6 +2,7 @@
 #define model_h
 
  #include "sample.h"
+#include <exception>
 
 //#include <string>
 
@@ -29,7 +30,6 @@ class model{
   arbi_array<num> theta;
 
   void set_theta(arbi_array<num> _theta);
-  void assign(int num_samples, arbi_array<int>& training_idx, arbi_array<int>& testing_idx, int& num_training, int& num_testing);
   sample read_sample(string folder_name);
   void load_data(arbi_array<string> folder_names);
   model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<int> _node_map, arbi_array<int> _edge_map, arbi_array<string> folder_names);

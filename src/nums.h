@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <fstream>
 #include <string>
+#include <stdio.h>
 
 typedef double num;
 using namespace std;
@@ -43,7 +44,7 @@ class arbi_array{
 
   arbi_array<T> static transpose(arbi_array<T>);
 
-  
+  void scale(num c);
 
 
 };
@@ -52,13 +53,14 @@ template <class T>
 ostream& operator<<(ostream& os, const arbi_array<T>& ar);
 
 
-arbi_array<int> read_mat_to_int(string file, int num_row, int num_col);
+arbi_array<int> read_mat_to_int(string file, int num_row, int num_col, const char* sep = ",");
 
   
-arbi_array<num> read_mat_to_num(string file, int num_row, int num_col);
+arbi_array<num> read_mat_to_num(string file, int num_row, int num_col, const char* sep = ",");
 
-arbi_array<int>  read_vect_to_int(string file, int size);
+arbi_array<int>  read_vect_to_int(string file, int size, char sep);
 
+arbi_array<string> read_vect_to_string(string file); 
 
 //template <class T>
 //ostream& operator<<(ostream& os, const arbi_array<T>& ar);

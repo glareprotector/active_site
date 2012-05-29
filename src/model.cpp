@@ -6,15 +6,6 @@ void model::set_theta(arbi_array<num> _theta){
   this->theta = _theta;
 }
 
-void model::assign(int num_samples, arbi_array<int>& training_idx, arbi_array<int>& testing_idx, int& num_training, int& num_testing){
-  // hardcode these in for now
-  training_idx = arbi_array<int>(1,1);
-  training_idx(0) = 0;
-  num_training = 1;
-  testing_idx = arbi_array<int>(1,1);
-  testing_idx(0) = 0;
-  num_testing = 0;
-}
 
 sample model::read_sample(string folder_name){
   /*
@@ -42,38 +33,53 @@ sample model::read_sample(string folder_name){
 
   // first read in info to figure out how many nodes, how many edges.  other params are read in already
   string info_file = folder_name + string("info.txt");
-  string node_feature_file = folder_name + string("node_features.txt");
-  string edge_features_file = folder_name + string("edge_features.txt");
-  string true_states_file = folder_name + string("true_states.txt");
-  string edge_file = folder_name + string("edges.txt");
+  string node_feature_file = folder_name + string("Xnode.csv");
+  string edge_features_file = folder_name + string("Xedge.csv");
+  string true_states_file = folder_name + string("true_y.csv");
+  string edge_file = folder_name + string("edge_list.csv");
 
-  arbi_array<int> info = read_vect_to_int(info_file, 2);
+
+
+  arbi_array<int> info = read_vect_to_int(info_file, 2, ' ');
   int num_nodes = info(0);
   int num_edges = info(1);
   
   arbi_array<num> node_features_transposed = read_mat_to_num(node_feature_file, this->num_node_features, num_nodes);
   arbi_array<num> node_features = arbi_array<num>::transpose(node_features_transposed);
 
-  arbi_array<num> edge_features = read_mat_to_num(edge_features_file, num_edges, this->num_edge_features);
-  arbi_array<int> true_states = read_vect_to_int(true_states_file, num_nodes);
+  arbi_array<num> edge_features_transposed = read_mat_to_num(edge_features_file, this->num_edge_features, num_edges);
+  arbi_array<num> edge_features = arbi_array<num>::transpose(edge_features_transposed);
+  arbi_array<int> true_states = read_vect_to_int(true_states_file, num_nodes, ' ');
+  // the true_states file has 1 and 2's, but this program wants 0 and 1's
+  for(int i = 0; i < num_nodes; i++){
+    true_states(i)--;
+  }
   arbi_array<int> edges = read_mat_to_int(edge_file, num_edges, 2);
-  return sample(this, node_features, edge_features, edges, true_states);
+  return sample(this, node_features, edge_features, edges, true_states, folder_name);
 }
 
 void model::load_data(arbi_array<string> folder_names){
   int num_samples = folder_names.size(0);
   cout<<"building training_idx"<<endl;
-  arbi_array<int> training_idx;
-  arbi_array<int> testing_idx;
-  assign(num_samples, training_idx, testing_idx, this->num_training, this->num_testing);
-  this->training_data = arbi_array<sample>(1,this->num_training);
-  this->testing_data = arbi_array<sample>(1,this->num_testing);
-  for(int i = 0; i < num_training; i++){
-    this->training_data(i) = read_sample(folder_names(training_idx(i)));
+
+  for(int i = 0; i < num_samples; i++){
+    try{
+      sample s = read_sample(folder_names(i));
+      // for now assigning everything to training, but have to change this
+      /*if(i > num_samples / 2){
+	this->training_data.append(s);
+      }
+      else{
+	this->testing_data.append(s);
+	}*/
+      this->training_data.append(s);
+    }
+    catch(...){
+      cout<<"default exception"<<endl;
+    }
   }
-  for(int i = 0; i < num_testing; i++){
-    this->testing_data(i) = read_sample(folder_names(testing_idx(i)));
-  }
+  this->num_training = training_data.size(0);
+  this->num_testing = testing_data.size(0);
 }
 
 model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<int> _node_map, arbi_array<int> _edge_map, arbi_array<string> folder_names){
@@ -89,11 +95,11 @@ model::model(int _num_states, int _num_node_features, int _num_edge_features, ar
   // would normally accept a list of folders to read from in load_data, but for now in load data just hardcode a sample
   
   // should read in num_states, num_node_features, num_edge_features first
-  string model_info_file("asdf/");
-  arbi_array<int> model_info = read_vect_to_int(model_info_file, 3);
-  this->num_states = model_info(0);
-  this->num_node_features = model_info(1);
-  this->num_edge_features = model_info(2);
+  // string model_info_file("asdf/");
+  // arbi_array<int> model_info = read_vect_to_int(model_info_file, 3);
+  // this->num_states = model_info(0);
+  // this->num_node_features = model_info(1);
+  // this->num_edge_features = model_info(2);
 
 
   load_data(folder_names);
@@ -122,16 +128,29 @@ num model::get_likelihood(){
 
 int main(){
 
-  arbi_array<num> tqt = read_mat_to_num(string("test_mat.txt"),2,3);
-  cout<<tqt;
-  return 0;
+  //arbi_array<num> tqt = read_mat_to_num(string("test_mat.txt"),2,3);
+  //cout<<tqt;
+  //return 0;
   
   cout<<"hello world"<<endl;
+
+  string pdb_list_file("/home/fultonw/active_site/active_site/data/catres_test.pdb_list");
+
+  arbi_array<string> pdb_list = read_vect_to_string(pdb_list_file);
+  cout<<pdb_list;
+
+  string data_folder("/home/fultonw/active_site/active_site/test/");
+  
+  for(int i = 0; i < pdb_list.size(0); i++){
+    pdb_list(i) = data_folder + pdb_list(i) + '/';
+  }
+  cout<<"pdb_list:"<<endl;
+  cout<<pdb_list<<endl;
 
   int num_nodes = 2;
   int num_edges = 1;
   int num_states = 2;
-  int num_node_features = 1;
+  int num_node_features = 27;
   int num_edge_features = 1;
   int num_node_weights = num_states * num_node_features;
   int num_edge_weights = num_states * num_states * num_edge_features;
@@ -154,29 +173,57 @@ int main(){
     }
   }
 
-  arbi_array<string> folder_names(1,1);
-  folder_names(0) = string("asdf");
 
 
-  model m(num_states, num_node_features, num_edge_features, node_map, edge_map, folder_names);
+  model m(num_states, num_node_features, num_edge_features, node_map, edge_map, pdb_list);
 
 
   int num_weights = idx;
   arbi_array<num> theta(1, num_weights);
-  theta.fill(1);
-  theta(0)=3;
-  theta(1)=2;
+  theta.fill(0);
+  theta(0) = 0;
+  theta(27) = 0;
+  theta(1) = 7.3;
+  theta(28) = 7;
+  theta(2) = 1;
+  theta(29) = 1.3;
+  theta(3) = .08;
+  theta(30) = .1;
+
+  //theta.fill(1);
+  //theta(0)=3;
+  //theta(1)=2;
   m.set_theta(theta);
+
+  for(int i = 0; i < m.num_training; i++){
+    m.training_data(i).set_node_potentials();
+    m.training_data(i).set_edge_potentials();
+    m.training_data(i).set_node_marginals();
+  }
+
+
   
   sample& s = m.training_data(0);
-
-  cout<<"after set_theta"<<endl;
-  s.set_node_potentials();
-  cout<<"after set_node_potentials"<<endl;
-  s.set_edge_potentials();
-  cout<<"after set_edge_potentials"<<endl;
-  
-  
+  cout<<"NODE FEATURRES: "<<endl;
+  cout<<s.node_features<<endl;
+  cout<<"NODE POTENTIALS:"<<endl;
+  cout<<s.node_potentials<<endl;
+  cout<<"edge potentials:"<<endl;
+  cout<<s.edge_potentials<<endl;
+  cout<<"node_marginals:"<<endl;
+  cout<<s.node_marginals<<endl;
+  cout<<"likelihood"<<endl;
+  cout<<s.get_likelihood()<<endl;
+  cout<<"gradient"<<endl;
+  //arbi_array<num> grad = s.get_gradient();
+  //cout<<grad<<endl;
+  //cout<<s.get_likelihood();
+  arbi_array<num> grad = s.get_gradient();
+  operator<<(cout,grad);
+  cout<<"log Z"<<endl;
+  cout<<s.get_log_Z()<<endl;
+  //  (cout<<s.get_gradient());
+  /*
 
 
   //arbi_array<int> assignment(1,2);
@@ -194,5 +241,15 @@ int main(){
   cout<<s.node_marginals<<endl;
   cout<<"edge_marginals"<<endl;
   cout<<s.edge_marginals<<endl;
+  */
 
+  //cout<<endl<<"likelihood: ";
+  //cout<<m.get_likelihood()<<endl;
+  //cout<<"marginals: "<<endl;
+  //cout<<s.node_marginals<<endl;
+  cout<<"FOLDER: "<<s.folder<<endl;
+  cout<<"ALL FOLDERS:"<<endl;
+  for(int i = 0; i < m.num_training; i++){
+    cout<<m.training_data(i).folder<<endl;
+  }
 }

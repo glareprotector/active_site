@@ -1,5 +1,5 @@
 #include "nums.h"
-
+#include <string.h>
 
 template <class T>
 arbi_array<T>::arbi_array(int _dim, ...){
@@ -85,13 +85,23 @@ arbi_array<T>& arbi_array<T>::operator= (const arbi_array<T>& ar){
 
 template <class T>
 void arbi_array<T>::append(T x){
+  if(linear_length == 0){
+    dim = 1;
+    dims = new int[1];
+    dims[0] = 1;
+    shift_lengths = new int[1];
+    shift_lengths[0] = 1;
+  }
+  else{
+    dims[0] = dims[0] + 1;
+  }
   assert(dim==1);
   T* new_m_data = new T[linear_length+1];
   for(int i = 0; i < linear_length; i++){
     new_m_data[i] = m_data[i];
   }
   linear_length++;
-  dims[0] = dims[0] + 1;
+
   new_m_data[linear_length-1] = x;
   delete[] m_data;
   m_data = new_m_data;
@@ -100,7 +110,12 @@ void arbi_array<T>::append(T x){
 
 template<class T>
 int arbi_array<T>::size(int which){
-  return dims[which];
+  if(dim == 0){
+    return 0;
+  }
+  else{
+    return dims[which];
+  }
 }
 
 template<class T>
@@ -138,23 +153,45 @@ arbi_array<T> arbi_array<T>::transpose(arbi_array<T> x){
   return ans;
 }
 
-arbi_array<int> read_vect_to_int(string file, int size){
-  ifstream in(file.c_str());
+template<class T>
+void arbi_array<T>::scale(num c){
+  for(int i = 0; i < linear_length; i++){
+    m_data[i] *= c;
+  }
+}
+
+class file_read_exception: public exception{
+  virtual const char* what() const throw(){
+    return "file read error";
+  }
+};
+
+void get_ifstream(const char* file, ifstream& in){
+  in.open(file);
+  if(in.fail()){
+    throw file_read_exception();
+  }
+}
+
+arbi_array<int> read_vect_to_int(string file, int size, char sep){
+  ifstream in;
+  get_ifstream(file.c_str(), in);
   string elt;
   arbi_array<int> ans(1,size);
   for(int i = 0; i < size; i++){
-    getline(in, elt, ',');
+    getline(in, elt, sep);
     ans(i) = atoi(elt.c_str());
   }
   return ans;
 }
 
 
-arbi_array<num> read_mat_to_num(string file, int num_row, int num_col){
+arbi_array<num> read_mat_to_num(string file, int num_row, int num_col, const char* sep){
   arbi_array<num> ans(2, num_row, num_col);
-  ifstream in(file.c_str());
+  ifstream in;
+  get_ifstream(file.c_str(), in);
   string line;
-  char* line_cstr = new char[100];
+  char* line_cstr = new char[10000];
   char* elt;
   int i = 0;
   while(in.good() && i < num_row){
@@ -162,39 +199,48 @@ arbi_array<num> read_mat_to_num(string file, int num_row, int num_col){
     strcpy(line_cstr, line.c_str());
     for(int j = 0; j < num_col; j++){
       if(j == 0){
-	elt = strtok(line_cstr, ",");
+	elt = strtok(line_cstr, sep);
       }
       else{
-	elt = strtok(NULL, ",");
+	elt = strtok(NULL, sep);
       }
+      //cout<<i<<" "<<j<<endl;
       ans(i,j) = atof(elt);
     }
+
     i++;
   }
   in.close();
-  delete[] line_cstr;
+  //  delete[] line_cstr;
   //  delete[] elt;
+  if(i != num_row){
+    cout<<"i and num_row: "<<i<<" "<<num_row<<endl;
+  }
   assert(i == num_row);
   return ans;
 }
 
-arbi_array<int> read_mat_to_int(string file, int num_row, int num_col){
+arbi_array<int> read_mat_to_int(string file, int num_row, int num_col, const char* sep){
   arbi_array<int> ans(2, num_row, num_col);
-  ifstream in(file.c_str());
+  ifstream in;
+  get_ifstream(file.c_str(), in);
   string line;
-  char* line_cstr;
+  char* line_cstr = new char[10000];
   char* elt;
   int i = 0;
-  while(in.good()){
+  while(in.good() && i < num_row){
     getline(in, line);
+    //cout<<line<<endl;
     strcpy(line_cstr, line.c_str());
     for(int j = 0; j < num_col; j++){
       if(j == 0){
-	elt = strtok(line_cstr, ",");
+	elt = strtok(line_cstr, sep);
       }
       else{
-	elt = strtok(NULL, ",");
+	elt = strtok(NULL, sep);
       }
+      
+      //cout<<i<<' '<<j<<' '<<num_col<<' '<<num_row<<endl;
       ans(i,j) = atoi(elt);
     }
     i++;
@@ -204,12 +250,41 @@ arbi_array<int> read_mat_to_int(string file, int num_row, int num_col){
   return ans;
 }
 
+// assumes the vect is in a column, not a row
+arbi_array<string> read_vect_to_string(string file){
+  arbi_array<string> ans;
+  ifstream in;
+  get_ifstream(file.c_str(), in);
+  string line;
+  char* line_cstr;
+  char* elt;
+  int i = 0;
+  while(in.good()){
+    std::getline(in, line);
+    ans.append(line);
+  }
+  in.close();
+  return ans;
+}
+
 
 
 template <class T>
-ostream& operator<<(ostream& os, const arbi_array<T>& ar){
-  for(int i = 0; i < ar.linear_length; i++){
-    os<<ar.m_data[i]<<" ";
+ostream& operator<<(ostream& os,  arbi_array<T>& ar){
+
+  // if it is 2d mat
+  if(ar.dim == 2){
+    for(int i = 0; i < ar.dims[0]; i++){
+      for(int j = 0; j < ar.dims[1]; j++){
+	cout<<ar(i,j)<<' ';
+      }
+      cout<<endl;
+    }
+  }
+  else{
+    for(int i = 0; i < ar.linear_length; i++){
+      os<<ar.m_data[i]<<" ";
+    }
   }
   return os;
 }

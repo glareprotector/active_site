@@ -20,13 +20,14 @@ sample::sample(){
   int x;
 }
 
-sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> _edge_features, arbi_array<int> _edges, arbi_array<int> _true_states){
+sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> _edge_features, arbi_array<int> _edges, arbi_array<int> _true_states, string folder){
   this->p_model = _p_model;
   this->node_features = _node_features;
   this->edge_features = _edge_features;
   this->num_nodes = _node_features.size(0);
   this->num_edges = _edge_features.size(0);
   this->true_states = _true_states;
+  this->folder = folder;
 
   // initialize hash_maps
   this->node_to_neighbors = hash_map<int, arbi_array<int> >();
@@ -71,8 +72,8 @@ void sample::set_node_potentials(){
       num temp = 0;
       for(int k = 0; k < p_model->num_node_features; k++){
 	temp = temp + node_features(i,k) * p_model->theta(p_model->node_map(j,k));
-	node_potentials(i,j) = exp(temp);
       }
+      node_potentials(i,j) = exp(temp);
     }
   }
 }
@@ -135,35 +136,79 @@ void sample::set_node_marginals(){
   }
 }
 
+// remember to take the negative of gradient
 arbi_array<num> sample::get_gradient(){
 
   arbi_array<num> gradient = arbi_array<num>(1, p_model->theta_length);
   
   for(int i = 0; i < num_nodes; i++){
     for(int k = 0; k < p_model->num_node_features; k++){
-      gradient(p_model->node_map(i,true_states(i))) += node_features(i,k);
+      gradient(p_model->node_map(true_states(i),k)) += node_features(i,k);
       for(int j = 0; j < p_model->num_states; j++){
-	gradient(p_model->node_map(i,j)) -= node_features(i,k) * node_marginals(i,j);
+	gradient(p_model->node_map(j,k)) -= node_features(i,k) * node_marginals(i,j);
       }
     }
   }
 
+  for(int i = 0; i < num_edges; i++){
+    for(int k = 0; k < p_model->num_edge_features; k++){
+      int node1 = pos_to_edge[i].first;
+      int node2 = pos_to_edge[i].second;
+      gradient(p_model->edge_map(true_states(node1),true_states(node2),k)) += edge_features(i,k);
+      for(int j = 0; j < p_model->num_states; j++){
+	for(int l = 0; l < p_model->num_states; l++){
+	  gradient(p_model->edge_map(j,l,k)) -= edge_features(i,k) * edge_marginals(i,j,l);
+	}
+      }
+    }
+  }
+
+  gradient.scale(-1.0);
+
   return gradient;
 }
-  
 
-num sample::get_likelihood(){
-  num temp = 0;
+num sample::get_log_Z(){
+  num energy = 0;
   for(int i = 0; i < num_nodes; i++){
-    temp *= get_node_potential(i,true_states(i));
+    for(int j = 0; j < p_model->num_states; j++){
+      energy -= node_marginals(i,j) * log(get_node_potential(i,j));
+    }
   }
   for(int i = 0; i < num_edges; i++){
     int node1 = pos_to_edge[i].first;
     int node2 = pos_to_edge[i].second;
-    cout<<node1<<node2<<"nodes!!"<<endl;
-    temp *= get_edge_potential(node1, node2, true_states(node1), true_states(node2));
+    for(int j = 0; j < p_model->num_states; j++){
+      for(int k = 0; k < p_model->num_states; k++){
+	energy -= edge_marginals(i,j,k) * log(get_edge_potential(node1,node2,j,k));
+      }
+    }
   }
-  return temp;
+  num entropy = 0;
+  for(int i = 0; i < num_nodes; i++){
+    for(int j = 0; j < p_model->num_states; j++){
+      entropy -= node_marginals(i,j) * log(node_marginals(i,j));
+    }
+  }
+  return entropy - energy;
+}
+  
+
+// returns negative log likelihood
+num sample::get_likelihood(){
+  num temp = 0;
+  for(int i = 0; i < num_nodes; i++){
+    temp += log(get_node_potential(i,true_states(i)));
+    //    cout<<temp<<endl;
+  }
+  
+  for(int i = 0; i < num_edges; i++){
+    int node1 = pos_to_edge[i].first;
+    int node2 = pos_to_edge[i].second;
+    //cout<<node1<<node2<<"nodes!!"<<endl;
+    temp += log(get_edge_potential(node1, node2, true_states(node1), true_states(node2)));
+  }
+  return temp - get_log_Z();
 }
 
 //#include model.cpp

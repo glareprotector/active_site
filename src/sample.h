@@ -67,16 +67,19 @@ class sample{
 
   int mean_field_max_iter;
 
+  string folder;
+
   model* p_model;
   num get_node_potential(int, int);
   num get_edge_potential(int, int, int, int);
-  sample(model*, arbi_array<num>, arbi_array<num>, arbi_array<int>, arbi_array<int>);
+  sample(model*, arbi_array<num>, arbi_array<num>, arbi_array<int>, arbi_array<int>, string);
   sample();
   void set_node_potentials();
   void set_edge_potentials();
   void set_node_marginals();
   num get_likelihood();
   arbi_array<num> get_gradient();
+  num get_log_Z();
   
   
 };
