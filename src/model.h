@@ -32,10 +32,11 @@ class model{
   void set_theta(arbi_array<num> _theta);
   sample read_sample(string folder_name);
   void load_data(arbi_array<string> folder_names);
-  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<int> _node_map, arbi_array<int> _edge_map, arbi_array<string> folder_names);
+  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int mean_field_max_iter);
   arbi_array<num> get_gradient();
   num get_likelihood();
-  
+
+  int mean_field_max_iter;
 
 };
 

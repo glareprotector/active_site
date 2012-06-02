@@ -61,6 +61,18 @@ arbi_array<T> arbi_array<T>::operator+(const arbi_array<T>& ar){
 }
 
 template <class T>
+void arbi_array<T>::write(string file_name, char sep = ','){
+  ofstream myfile;
+  myfile.open(file_name.c_str());
+  for(int i = 0; i < linear_length; i++){
+    myfile<<m_data[i];
+    if(i != linear_length-1){
+      myfile<<sep;
+    }
+  }
+}
+
+template <class T>
 arbi_array<T>& arbi_array<T>::operator= (const arbi_array<T>& ar){
   assert(this != &ar);
   if (m_data != 0) { delete[] m_data; }
@@ -141,11 +153,30 @@ int arbi_array<T>::size(int which){
 }
 
 template<class T>
-T& arbi_array<T>::operator()(...){
-  va_list iter;
+inline T& arbi_array<T>::operator()(...){
+  
   va_start(iter, NULL);
-  int pos = 0;
-  for(int i = 0; i < this->dim; i++){
+  
+  pos = 0;  
+
+  if(dim == 1){
+    return this->m_data[va_arg(iter,int)];
+  }
+  if(dim == 2){
+    pos += this->shift_lengths[0] * va_arg(iter,int);
+    pos += this->shift_lengths[1] * va_arg(iter,int);
+    return this->m_data[pos];
+  }
+  if(dim == 3){
+    pos += this->shift_lengths[0] * va_arg(iter,int);
+    pos += this->shift_lengths[1] * va_arg(iter,int);
+    pos += this->shift_lengths[2] * va_arg(iter,int);
+    return this->m_data[pos];
+  }
+
+
+
+  for(i = 0; i < this->dim; i++){
     pos += this->shift_lengths[i] * va_arg(iter,int);
   }
   return this->m_data[pos];
@@ -209,6 +240,18 @@ arbi_array<int> read_vect_to_int(string file, int size, char sep){
   return ans;
 }
 
+
+arbi_array<num> read_vect_to_num(string file, int size, char sep){
+  ifstream in;
+  get_ifstream(file.c_str(), in);
+  string elt;
+  arbi_array<num> ans(1,size);
+  for(int i = 0; i < size; i++){
+    getline(in, elt, sep);
+    ans(i) = atof(elt.c_str());
+  }
+  return ans;
+}
 
 arbi_array<num> read_mat_to_num(string file, int num_row, int num_col, const char* sep){
   arbi_array<num> ans(2, num_row, num_col);

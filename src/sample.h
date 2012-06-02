@@ -28,10 +28,15 @@ It represents one sample.  It supports the following functions (given theta)
 #include <iostream>
 //#include "model.h"
 #include "nums.h"
+#include <math.h>
+#include "globals.h"
 
-// MPI global variables
+// globals for MPI
 int proc_id;
 int num_procs;
+
+
+#define SERIAL
 
 using namespace std;
 using namespace __gnu_cxx;
@@ -43,7 +48,7 @@ struct pair_hash{
   }
  };
 
-//int mean_field_max_iter = 100;
+
 
 class model;
 
@@ -64,11 +69,9 @@ class sample{
   int num_nodes;
   int num_edges;
     
-  hash_map<int, arbi_array<int> > node_to_neighbors;
-  hash_map< pair<int, int>, int, pair_hash> edge_to_pos;
-  hash_map< int, pair<int, int> > pos_to_edge;
-
-  int mean_field_max_iter;
+  arbi_array< arbi_array<int> > node_to_neighbors;
+  arbi_array< pair<int,int> > pos_to_edge;
+  arbi_array<int> edge_to_pos;
 
   string folder;
 
@@ -83,7 +86,7 @@ class sample{
   num get_likelihood();
   arbi_array<num> get_gradient();
   num get_log_Z();
-  
+  num get_config_likelihood();
   
 };
 

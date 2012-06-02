@@ -13,6 +13,10 @@ using namespace std;
 
 template <class T>
 class arbi_array{
+ private:
+  int pos;
+  int i;
+  va_list iter;
 
  public:
 
@@ -37,7 +41,7 @@ class arbi_array{
 
   int size(int);
 
-  T& operator()(...);
+  inline T& operator()(...);
 
   ~arbi_array();
 
@@ -47,6 +51,7 @@ class arbi_array{
 
   void scale(num c);
 
+  void write(string file_name, char sep);
 
 };
 
@@ -60,6 +65,8 @@ arbi_array<int> read_mat_to_int(string file, int num_row, int num_col, const cha
 arbi_array<num> read_mat_to_num(string file, int num_row, int num_col, const char* sep = ",");
 
 arbi_array<int>  read_vect_to_int(string file, int size, char sep);
+
+arbi_array<num>  read_vect_to_num(string file, int size, char sep);
 
 arbi_array<string> read_vect_to_string(string file); 
 
