@@ -1,5 +1,4 @@
 #include "sample.h"
-// #include "model.h"
 #include "Score.h"
 #include "model.cpp"
 
@@ -23,11 +22,6 @@ sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> 
   this->num_edges = _edge_features.size(0);
   this->true_states = _true_states;
   this->folder = folder;
-
-  // initialize hash_maps
-  //this->node_to_neighbors = hash_map<int, arbi_array<int> >();
-  //this->edge_to_pos = hash_map< pair<int, int>, int, pair_hash>();
-  //this->pos_to_edge = hash_map< int, pair<int,int> >();
 
   this->node_to_neighbors = arbi_array< arbi_array<int> >(1, this->num_nodes);
   this->pos_to_edge = arbi_array< pair<int,int> >(1, this->num_edges);
@@ -83,20 +77,59 @@ void sample::set_edge_potentials(){
 // storing marginals in regular non-log form
 void sample::set_marginals(){
 
+  arbi_array<num> log_new_marginals(1,p_model->num_states);
+
+  /*if(this->folder == "/home/fultonw/active_site/active_site/test/1ca0_H/"){
+    cout<<"theta: "<<p_model->theta<<" "<<endl;
+    num asdf = 0;
+    for(int i = 0; i < 27; i++){
+      asdf += p_model->theta(i);
+    }
+    cout<<"gradient sum: "<<asdf;
+    }*/
+
   // set initial marginals to normalized potentials
   for(int i = 0; i < num_nodes; i++){
-    num sum = 0;
-    
+
+    num log_sum = 0;
+
     for(int j = 0; j < p_model->num_states; j++){
-      (node_marginals)(i,j) = exp(get_node_potential(i,j));
-      sum += (node_marginals)(i,j);
+      
+      if(j == 1){
+	log_sum = LogScore_ADD(get_node_potential(i,0), get_node_potential(i,1));
+      }
+      if(j > 1){
+	LogScore_PLUS_EQUALS(log_sum, get_node_potential(i,j));
+      }
+      
     }
+
+    if(this->folder == "/home/fultonw/active_site/active_site/test/1ca0_H/"){
+      //cout<<"log_sum: "<<log_sum<<" ";
+    }
+
+
+    num norm = 0;
     for(int j = 0; j < p_model->num_states; j++){
-      (node_marginals)(i,j) /= sum;
+      node_marginals(i,j) = exp(get_node_potential(i,j) - log_sum);
+      norm += node_marginals(i,j);
     }
+
+    if(this->folder == "/home/fultonw/active_site/active_site/test/1ca0_H/"){
+      // cout<<"norm_sum: "<<norm<<" ";
+    }
+
+    for(int j = 0; j < p_model->num_states; j++){
+      node_marginals(i,j) /= norm;
+    }
+
   }
 
-  arbi_array<num> log_new_marginals(1,p_model->num_states);
+ if(this->folder == "/home/fultonw/active_site/active_site/test/1ca0_H/"){
+   //cout<<"initial marginals: "<<node_marginals<<" ";
+ }
+
+
   for(int i = 0; i < p_model->mean_field_max_iter; i++){
     for(int j = 0; j < num_nodes; j++){
 
@@ -116,7 +149,15 @@ void sample::set_marginals(){
       // normalize in log space
       num log_sum = 0;
       for(int n = 0; n < p_model->num_states; n++){
-	LogScore_PLUS_EQUALS(log_sum, log_new_marginals(n));
+	if(n == 1){
+	  log_sum = LogScore_ADD(log_new_marginals(0), log_new_marginals(1));
+	  //if(this->folder == "/home/fultonw/active_site/active_site/test/1ca0_H/"){
+	    //cout<<"log_sum: "<<log_sum<<" ";
+	  //}
+	}
+	if(n > 1){
+	  LogScore_PLUS_EQUALS(log_sum, log_new_marginals(n));
+	}
       }
       for(int n = 0; n < p_model->num_states; n++){
 	log_new_marginals(n) -= log_sum;
@@ -131,6 +172,9 @@ void sample::set_marginals(){
 	sum += (node_marginals)(j,n);
       }
       for(int n = 0; n < p_model->num_states; n++){
+	//if(this->folder == "/home/fultonw/active_site/active_site/test/1ca0_H/"){
+	// cout<<"norm_sum: "<<sum<<" ";
+	// }
 	(node_marginals)(j,n) /= sum;
       }
     }
@@ -207,12 +251,15 @@ num sample::get_log_Z(){
   num entropy = 0;
   for(int i = 0; i < num_nodes; i++){
     for(int j = 0; j < p_model->num_states; j++){
-      if(node_marginals(i,j) > 1e-10){
+      if(node_marginals(i,j) > 1e-80){
 	entropy -= node_marginals(i,j) * log(node_marginals(i,j));
       }
     }
   }
-
+  if(!isfinite(energy)){
+    cout<<node_marginals<<endl;
+    assert(false);
+  }
   assert(isfinite(entropy));
   assert(isfinite(energy));
 
@@ -246,7 +293,23 @@ num sample::get_likelihood(){
   assert(isfinite(config_likelihood));
 
   num ans = log_z - config_likelihood;
-  assert(ans > 0);
+  if(ans <= 0){
+    cout<<setprecision(32);
+    cout<<this->folder<<" log_z: "<<log_z<<" config: "<<config_likelihood<<endl;
+    cout<<"ans: "<<ans<<endl;
+    cout<<node_marginals<<endl;
+    cout<<p_model->theta<<endl;
+    cout<<endl<<"NODE FEATURES"<<endl;
+    cout<<node_features<<endl;
+    cout<<endl<<"NODE pOTENTIALS:"<<endl;
+    //cout<<node_potentials<<endl;
+    cout<<this->folder<<" log_z: "<<log_z<<" config: "<<config_likelihood<<endl;
+    p_model->theta.write(string("theta_shorter.csv"), ',');
+    arbi_array<num> to_write = arbi_array<num>::transpose(node_features);
+    to_write.write(string("/home/fultonw/active_site/active_site/test/2jcw_A/XnodeNormed.csv"), ',');
+    assert(false);
+    }
+  assert(ans >= 0);
 
   return ans;
 }

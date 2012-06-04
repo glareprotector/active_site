@@ -64,10 +64,26 @@ template <class T>
 void arbi_array<T>::write(string file_name, char sep = ','){
   ofstream myfile;
   myfile.open(file_name.c_str());
-  for(int i = 0; i < linear_length; i++){
-    myfile<<m_data[i];
-    if(i != linear_length-1){
-      myfile<<sep;
+
+  if(dim == 2){
+    for(int i = 0; i < dims[0]; i++){
+      for(int j = 0; j < dims[1]; j++){
+	myfile<<operator()(i,j);
+	if(j != dims[1]-1){
+	  myfile<<sep;
+	}
+      }
+      if(i != dims[0]-1){
+	myfile<<endl;
+      }
+    }
+  }
+  else{
+    for(int i = 0; i < linear_length; i++){
+      myfile<<m_data[i];
+      if(i != linear_length-1){
+	myfile<<sep;
+      }
     }
   }
 }
@@ -217,13 +233,14 @@ void arbi_array<T>::scale(num c){
 
 class file_read_exception: public exception{
   virtual const char* what() const throw(){
-    return "file read error";
+    return "file read exception";
   }
 };
 
 void get_ifstream(const char* file, ifstream& in){
   in.open(file);
   if(in.fail()){
+    cout<<"while reading: "<<file<<" , encountered a: "<<endl;
     throw file_read_exception();
   }
 }
@@ -258,7 +275,7 @@ arbi_array<num> read_mat_to_num(string file, int num_row, int num_col, const cha
   ifstream in;
   get_ifstream(file.c_str(), in);
   string line;
-  char* line_cstr = new char[10000];
+  char* line_cstr = new char[100000];
   char* elt;
   int i = 0;
   while(in.good() && i < num_row){

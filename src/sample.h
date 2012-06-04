@@ -36,7 +36,7 @@ int proc_id;
 int num_procs;
 
 
-#define SERIAL
+
 
 using namespace std;
 using namespace __gnu_cxx;
