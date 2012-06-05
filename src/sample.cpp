@@ -188,8 +188,10 @@ void sample::set_marginals(){
       for(int k = 0; k < p_model->num_states; k++){
 	edge_marginals(i,j,k) = node_marginals(node1,j) * node_marginals(node2,k);
       }
+    
     }
   }
+  //cout<<folder<<" GGGGGGGGGGGGGGGGGGGGGGGGGGGG "<<node_marginals<<endl;
 }
 
 // remember to take the negative of gradient
@@ -293,23 +295,27 @@ num sample::get_likelihood(){
   assert(isfinite(config_likelihood));
 
   num ans = log_z - config_likelihood;
-  if(ans <= 0){
+  //if(ans <= 0){
+  if(false){
     cout<<setprecision(32);
     cout<<this->folder<<" log_z: "<<log_z<<" config: "<<config_likelihood<<endl;
     cout<<"ans: "<<ans<<endl;
-    cout<<node_marginals<<endl;
     cout<<p_model->theta<<endl;
-    cout<<endl<<"NODE FEATURES"<<endl;
-    cout<<node_features<<endl;
-    cout<<endl<<"NODE pOTENTIALS:"<<endl;
+    //cout<<endl<<"NODE FEATURES"<<endl;
+    //cout<<node_features<<endl;
+    //cout<<endl<<"NODE pOTENTIALS:"<<endl;
     //cout<<node_potentials<<endl;
+    //cout<<endl<<"NODE MARGINALS:"<<endl;
+    //cout<<node_marginals<<endl;
     cout<<this->folder<<" log_z: "<<log_z<<" config: "<<config_likelihood<<endl;
     p_model->theta.write(string("theta_shorter.csv"), ',');
     arbi_array<num> to_write = arbi_array<num>::transpose(node_features);
-    to_write.write(string("/home/fultonw/active_site/active_site/test/2jcw_A/XnodeNormed.csv"), ',');
+    to_write.write(this->folder + string("XnodeNormed.csv"), ',');
+    cout<<"THETA: "<<p_model->theta<<endl;
+    cout<<"FFFFFFFFFFFFF"<<endl;
     assert(false);
     }
-  assert(ans >= 0);
+  //assert(ans >= 0);
 
   return ans;
 }

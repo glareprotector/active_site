@@ -38,11 +38,17 @@ class model{
   void load_data(arbi_array<string> folder_names);
   void assign(int _num_folds, int _which_fold);
   void normalize();
-  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> _folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold);
+  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> _folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string results_folder);
   arbi_array<num> get_gradient();
   num get_likelihood();
+  void test();
+  void report(string);
+  void update_training();
+  void update_testing();
 
   int mean_field_max_iter;
+
+  string results_folder;
 
 };
 

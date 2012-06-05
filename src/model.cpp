@@ -10,18 +10,32 @@
 void model::set_theta(arbi_array<num> _theta){
   // only have to do something if this is a new value of theta
   if((_theta == theta) == false){
-  
     this->theta = _theta;
-
-    for(int i = 0; i < num_training; i++){
-      data(training_indicies(i)).set_node_potentials();
-      data(training_indicies(i)).set_edge_potentials();
-      data(training_indicies(i)).set_marginals();
-    }
+    update_training();
   }
 }
 
+void model::update_training(){
 
+  for(int i = 0; i < num_training; i++){
+    data(training_indicies(i)).set_node_potentials();
+    data(training_indicies(i)).set_edge_potentials();
+    data(training_indicies(i)).set_marginals();
+  }
+
+}
+
+
+void model::update_testing(){
+
+  for(int i = 0; i < num_testing; i++){
+    data(testing_indicies(i)).set_node_potentials();
+    data(testing_indicies(i)).set_edge_potentials();
+    data(testing_indicies(i)).set_marginals();
+  }
+
+}
+  
 sample model::read_sample(string folder_name){
 
   // first read in info to figure out how many nodes, how many edges.  other params are read in already
@@ -122,48 +136,120 @@ void model::normalize(){
 	  data(j).node_features(k,i) /= variance;
 	}
       }
-      if(proc_id == 0){
-	//cout<<mean<<" "<<sqr_dist_sum<<" "<<count_sum<<" "<<variance<<endl;
-      }
     }
   }
 }
 
-// writes to specified file the scores for each score as well as their true class
-void model::report(string file_name){
+// calculates scores for every test based on the current value of theta
+void model::test(){
+  
+  update_testing();
+  report(results_folder);
+
+}
+    
+
+// writes to specified folder the scores for each score as well as their true class
+void model::report(string report_folder){
+
+  arbi_array<int> true_classes;
+  arbi_array<num> scores;
 
   // first get total length of stuff to report
-  int num = 0;
-  for(int i = 0; i < num_samples; i++){
-    num += data(i).num_nodes;
+  int num_data = 0;
+  for(int i = 0; i < num_testing; i++){
+    num_data += data(testing_indicies(i)).num_nodes;
   }
 
   #ifndef SERIAL
 
-  int num_sum;
+  MPI_Status status;
+  int num_data_sum;
   MPI_Barrier(MPI_COMM_WORLD);
-  MPI_Reduce(&num, &num_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&num_data, &num_data_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD);
-  MPI_Bcast(&num_sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&num_data_sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD);
+  
+  // root process gets larger true_classes and scores
+  if(proc_id == 0){
+    true_classes = arbi_array<int>(1, num_data_sum);
+    scores = arbi_array<num>(1, num_data_sum);
+  }
+  else{
+    true_classes = arbi_array<int>(1, num_data);
+    scores = arbi_array<num>(1, num_data);
+  }
 
-  array<int> true_classes(1, num_sum);
-  array<num> scores(1, num_sum);
+  #else
+
+  true_classes = arbi_array<int>(1, num_data);
+  scores = arbi_array<num>(1, num_data);
 
   #endif
-
-  array<int> self_true_classes(1, num);
-  array<num> self_scores(1, num);
 
   // put own scores/classes into the vector
   // score is the marginal of the marginal class
   int idx = 0;
-  for(int i = 0; i < num_samples; i++){
-    for(int j = 0; j < data(i).num_node; j++){
-      self_true_classes(idx) = data(i).true_states(j);
-      self_scores(idx) = data(i).node_marginals(j,1);
+  for(int i = 0; i < num_testing; i++){
+    for(int j = 0; j < data(testing_indicies(i)).num_nodes; j++){
+      true_classes(idx) = data(testing_indicies(i)).true_states(j);
+      scores(idx) = data(testing_indicies(i)).node_marginals(j,1);
+      idx++;
     }
   }
+
+  // if doing things in parallel, have to add more stuff to the vectors
+  
+  #ifndef SERIAL
+
+  // each process takes turns sending messages to process 0
+  int pos = idx;
+  for(int i = 1 ; i < num_procs; i++){
+    int* class_buf;
+    num* score_buf;
+    int next_size;
+    if(proc_id == i){
+      class_buf = true_classes.m_data;
+      score_buf = scores.m_data;
+      next_size = true_classes.size(0);
+      MPI_Send(&next_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(class_buf, next_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(score_buf, next_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+    }
+    else if(proc_id == 0){
+      class_buf = true_classes.m_data + pos;
+      score_buf = scores.m_data + pos;
+      MPI_Recv(&next_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(class_buf, next_size, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(score_buf, next_size, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, &status);
+      pos += next_size;
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+
+  #endif
+
+  //
+  string class_file = report_folder + string("true_classes.csv");
+  string score_file = report_folder + string("scores.csv");
+  string theta_file = report_folder + string("theta.csv");
+  #ifdef SERIAL
+
+  true_classes.write(class_file, ',');
+  scores.write(score_file, ',');
+
+  #else
+  
+  if(proc_id == 0){
+    true_classes.write(class_file, ',');
+    scores.write(score_file, ',');
+    theta.write(theta_file, ',');
+  }
+
+  #endif
+
+}
 
 void model::assign(int _num_folds, int _which_fold){
   
@@ -181,6 +267,9 @@ void model::assign(int _num_folds, int _which_fold){
       testing_indicies.append(i);
     }
   }
+  cout<<"testing: "<<testing_indicies<<endl;
+  cout<<"training: "<<training_indicies<<endl;
+  //assert(false);
 
   num_training = training_indicies.size(0);
   num_testing = testing_indicies.size(0);
@@ -238,7 +327,7 @@ void model::load_data(arbi_array<string> folder_names){
 
   
 
-model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold){
+model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string _results_folder){
 
   this->num_states = _num_states;
   this->num_node_features = _num_node_features;
@@ -269,10 +358,12 @@ model::model(int _num_states, int _num_node_features, int _num_edge_features, ar
   this->theta = arbi_array<num>(1, this->theta_length);
 
   this->mean_field_max_iter = _mean_field_max_iter;
+  this->results_folder = _results_folder;
 
   load_data(folder_names);
   assign(_num_folds, _which_fold);
   normalize();
+  update_training();
 }
 
 arbi_array<num> model::get_gradient(){
@@ -388,6 +479,10 @@ class My_Minimizer: public Minimizer{
 
   }
 
+  virtual void ReportAUC(){
+    p_model->test();
+  }
+
   virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length){
     int s;
   }
@@ -422,15 +517,15 @@ int main(int argc, char** argv){
   int num_node_features = 27;
   int num_edge_features = 1;
 
-  model m(num_states, num_node_features, num_edge_features, pdb_folders, globals::mean_field_max_iter, globals::num_folds, globals::which_fold);
-  cout<<m.data(0).node_features<<endl;
+  model m(num_states, num_node_features, num_edge_features, pdb_folders, globals::mean_field_max_iter, globals::num_folds, globals::which_fold, globals::results_folder);
+  
   
   #ifndef SERIAL 
   MPI_Barrier(MPI_COMM_WORLD); 
   #endif
 
   cout<<"ALL FOLDERS:"<<endl;
-  for(int i = 0; i < m.num_training; i++){
+  for(int i = 0; i < m.num_samples; i++){
     cout<<proc_id<<": "<<m.data(i).folder<<endl;
   }
 
@@ -440,7 +535,7 @@ int main(int argc, char** argv){
 
   vector<num> w0(m.theta_length, 0);
   My_Minimizer* minner = new My_Minimizer(&m);
-  minner->LBFGS(w0,1000);
+  minner->LBFGS(w0,20000);
 
   #ifndef SERIAL
   MPI_Finalize();
