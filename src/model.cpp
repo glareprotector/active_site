@@ -327,7 +327,7 @@ void model::load_data(arbi_array<string> folder_names){
 
   
 
-model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string _results_folder){
+model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string _results_folder, num _reg_constant, int _which_obj){
 
   this->num_states = _num_states;
   this->num_node_features = _num_node_features;
@@ -357,8 +357,10 @@ model::model(int _num_states, int _num_node_features, int _num_edge_features, ar
   this->theta_length = idx;
   this->theta = arbi_array<num>(1, this->theta_length);
 
+  this->reg_constant = _reg_constant;
   this->mean_field_max_iter = _mean_field_max_iter;
   this->results_folder = _results_folder;
+  this->which_obj = _which_obj;
 
   load_data(folder_names);
   assign(_num_folds, _which_fold);
@@ -371,20 +373,40 @@ arbi_array<num> model::get_gradient(){
   arbi_array<num> ans(1, theta_length);
   ans.fill(0);
   for(int i = 0; i < num_training; i++){
-    ans = ans + data(training_indicies(i)).get_gradient();
+    switch(which_obj){
+    case 0:
+      ans = ans + data(training_indicies(i)).get_likelihood_gradient();
+      break;
+    }
+  }
+
+  // have to add in term due to regularization
+  for(int i = 0; i < theta_length; i++){
+    ans(i) += theta(i) / reg_constant;
   }
 
   return ans;
 }
 
-num model::get_likelihood(){
+num model::get_obj_val(){
 
   num ans = 0;
   for(int i = 0; i < num_training; i++){
-    ans += data(training_indicies(i)).get_likelihood();
+    switch(which_obj){
+    case 0:
+      ans += data(training_indicies(i)).get_likelihood();
+      break;
+    }
   }
 
-  return ans;
+  // add in l2 penalty
+  num penalty = 0;
+  for(int i = 0; i < theta_length; i++){
+    penalty += theta(i) * theta(i);
+  }
+  penalty /= (2.0 * reg_constant);
+
+  return ans + penalty;
 }
 
 class My_Minimizer: public Minimizer{
@@ -453,7 +475,7 @@ class My_Minimizer: public Minimizer{
       theta(i) = x[i];
     }
     p_model->set_theta(theta);
-    double ans = p_model->get_likelihood();
+    double ans = p_model->get_obj_val();
     return ans;
     
     #else
@@ -463,7 +485,7 @@ class My_Minimizer: public Minimizer{
       theta(i) = x[i];
     }
     p_model->set_theta(theta);
-    double ans = p_model->get_likelihood();
+    double ans = p_model->get_obj_val();
 
     // now, send all messages to root for reducing.  then broadcast result back to everyone
     double ans_sum = 0;
@@ -517,7 +539,7 @@ int main(int argc, char** argv){
   int num_node_features = 27;
   int num_edge_features = 1;
 
-  model m(num_states, num_node_features, num_edge_features, pdb_folders, globals::mean_field_max_iter, globals::num_folds, globals::which_fold, globals::results_folder);
+  model m(num_states, num_node_features, num_edge_features, pdb_folders, globals::mean_field_max_iter, globals::num_folds, globals::which_fold, globals::results_folder, globals::reg_constant, globals::which_obj);
   
   
   #ifndef SERIAL 

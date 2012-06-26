@@ -195,7 +195,7 @@ void sample::set_marginals(){
 }
 
 // remember to take the negative of gradient
-arbi_array<num> sample::get_gradient(){
+arbi_array<num> sample::get_likelihood_gradient(){
 
   arbi_array<num> gradient = arbi_array<num>(1, p_model->theta_length);
   gradient.fill(0);

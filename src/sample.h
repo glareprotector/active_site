@@ -83,10 +83,18 @@ class sample{
   void set_node_potentials();
   void set_edge_potentials();
   void set_marginals();
+  
+  // functions related to likelihood
   num get_likelihood();
-  arbi_array<num> get_gradient();
+  arbi_array<num> get_likelihood_gradient();
   num get_log_Z();
   num get_config_likelihood();
+
+  // separate set of functions for each obj function
+  num get_exp_dist_obj();
+  arbi_array<num> get_exp_dist_gradient();
+  
+  
   
 };
 

@@ -1,7 +1,7 @@
- #ifndef model_h
+#ifndef model_h
 #define model_h
 
- #include "sample.h"
+#include "sample.h"
 #include <exception>
 
 //#include <string>
@@ -38,15 +38,17 @@ class model{
   void load_data(arbi_array<string> folder_names);
   void assign(int _num_folds, int _which_fold);
   void normalize();
-  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> _folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string results_folder);
+  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> _folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string results_folder, num _reg_constant, int which_obj);
   arbi_array<num> get_gradient();
-  num get_likelihood();
+  num get_obj_val();
   void test();
   void report(string);
   void update_training();
   void update_testing();
 
   int mean_field_max_iter;
+  num reg_constant;
+  int which_obj;
 
   string results_folder;
 
