@@ -5,37 +5,6 @@
 #include <mpi.h> 
 #endif
 
-// if you change theta, then need to set potentials/marginals
-// this only recomputes the values for training data
-void model::set_theta(arbi_array<num> _theta){
-  // only have to do something if this is a new value of theta
-  if((_theta == theta) == false){
-    this->theta = _theta;
-    update_training();
-  }
-}
-
-void model::update_training(){
-
-  for(int i = 0; i < num_training; i++){
-    data(training_indicies(i)).set_node_potentials();
-    data(training_indicies(i)).set_edge_potentials();
-    data(training_indicies(i)).set_marginals();
-  }
-
-}
-
-
-void model::update_testing(){
-
-  for(int i = 0; i < num_testing; i++){
-    data(testing_indicies(i)).set_node_potentials();
-    data(testing_indicies(i)).set_edge_potentials();
-    data(testing_indicies(i)).set_marginals();
-  }
-
-}
-  
 sample model::read_sample(string folder_name){
 
   // first read in info to figure out how many nodes, how many edges.  other params are read in already
@@ -45,7 +14,11 @@ sample model::read_sample(string folder_name){
   string true_states_file = folder_name + string("true_y.csv");
   string edge_file = folder_name + string("edge_list.csv");
 
-
+  string pdb_name;
+  string chain_letter;
+  istringstream split(folder_name);
+  getline(split, pdb_name, '_');
+  getline(split, chain_letter);
 
   arbi_array<int> info = read_vect_to_int(info_file, 2, ' ');
   int num_nodes = info(0);
@@ -64,7 +37,7 @@ sample model::read_sample(string folder_name){
   }
 
   arbi_array<int> edges = read_mat_to_int(edge_file, num_edges, 2);
-  return sample(this, node_features, edge_features, edges, true_states, folder_name);
+  return sample(this, node_features, edge_features, edges, true_states, folder_name, pdb_name, chain_letter);
 }
 
 void model::normalize(){
@@ -150,7 +123,7 @@ void model::test(){
     
 
 // writes to specified folder the scores for each score as well as their true class
-void model::report(string report_folder){
+void model::report(arbi_array<num> theta, string report_folder){
 
   arbi_array<int> true_classes;
   arbi_array<num> scores;
@@ -192,9 +165,11 @@ void model::report(string report_folder){
   // score is the marginal of the marginal class
   int idx = 0;
   for(int i = 0; i < num_testing; i++){
+    arbi_array<num> node_marginals, edge_marginals;
+    data(testing_indicies(i)).get_marginals(theta, node_marginals, edge_marginals);
     for(int j = 0; j < data(testing_indicies(i)).num_nodes; j++){
       true_classes(idx) = data(testing_indicies(i)).true_states(j);
-      scores(idx) = data(testing_indicies(i)).node_marginals(j,1);
+      scores(idx) = node_marginals(j,1);
       idx++;
     }
   }
@@ -365,19 +340,15 @@ model::model(int _num_states, int _num_node_features, int _num_edge_features, ar
   load_data(folder_names);
   assign(_num_folds, _which_fold);
   normalize();
-  update_training();
+  //update_training();
 }
 
-arbi_array<num> model::get_gradient(){
+arbi_array<num> model::get_dL_dTheta(arbi_array<num> theta){
 
   arbi_array<num> ans(1, theta_length);
   ans.fill(0);
   for(int i = 0; i < num_training; i++){
-    switch(which_obj){
-    case 0:
-      ans = ans + data(training_indicies(i)).get_likelihood_gradient();
-      break;
-    }
+      ans = ans + data(training_indicies(i)).get_dL_dTheta(which_obj, theta);
   }
 
   // have to add in term due to regularization
@@ -388,14 +359,11 @@ arbi_array<num> model::get_gradient(){
   return ans;
 }
 
-num model::get_obj_val(){
+num model::get_L(arbi_array<num> theta){
 
   num ans = 0;
   for(int i = 0; i < num_training; i++){
-    switch(which_obj){
-    case 0:
-      ans += data(training_indicies(i)).get_likelihood();
-      break;
+    ans += data(training_indicies(i)).get_L(which_obj, theta);
     }
   }
 
@@ -425,8 +393,8 @@ class My_Minimizer: public Minimizer{
     for(int i = 0; i < x.size(); i++){
       theta(i) = x[i];
     }
-    p_model->set_theta(theta);
-    arbi_array<num> ans = p_model->get_gradient();
+    //p_model->set_theta(theta);
+    arbi_array<num> ans = p_model->get_dL_dTheta(theta);
     assert(gradient.size() == ans.linear_length);
     for(int i = 0; i < gradient.size(); i++){
       gradient[i] = ans(i);
@@ -438,8 +406,8 @@ class My_Minimizer: public Minimizer{
     for(int i = 0; i < x.size(); i++){
       theta(i) = x[i];
     }
-    p_model->set_theta(theta);
-    arbi_array<num> ans = p_model->get_gradient();
+    //p_model->set_theta(theta);
+    arbi_array<num> ans = p_model->get_dL_dTheta(theta);
     num* ans_array = new num[p_model->theta_length];
     num* ans_sum_array = new num[p_model->theta_length];
     for(int i = 0; i < p_model->theta_length; i++){
@@ -474,8 +442,8 @@ class My_Minimizer: public Minimizer{
     for(int i = 0; i < x.size(); i++){
       theta(i) = x[i];
     }
-    p_model->set_theta(theta);
-    double ans = p_model->get_obj_val();
+    //p_model->set_theta(theta);
+    double ans = p_model->get_L(theta);
     return ans;
     
     #else
@@ -484,8 +452,8 @@ class My_Minimizer: public Minimizer{
     for(int i = 0; i < x.size(); i++){
       theta(i) = x[i];
     }
-    p_model->set_theta(theta);
-    double ans = p_model->get_obj_val();
+    //p_model->set_theta(theta);
+    double ans = p_model->get_L(theta);
 
     // now, send all messages to root for reducing.  then broadcast result back to everyone
     double ans_sum = 0;
@@ -518,6 +486,13 @@ class My_Minimizer: public Minimizer{
 int main(int argc, char** argv){
 
   globals::init(argc, argv);
+  
+  PyObject* pName, pModule, pDict, pResult;
+
+  pName = PyString_FromString("get_stuff");
+  pModule = PyImport_Import(pName);
+  pDict = PyModule_GetDict(pModule);
+  
 
   #ifndef SERIAL
   
@@ -528,11 +503,11 @@ int main(int argc, char** argv){
   #endif
 
   arbi_array<string> pdb_folders = read_vect_to_string(globals::pdb_list_file);
-
+  
   for(int i = 0; i < pdb_folders.size(0); i++){
     pdb_folders(i) = globals::data_folder + pdb_folders(i) + '/';
   }
-  
+
   cout<<proc_id<<": "<<pdb_folders<<endl;
 
   int num_states = 2;

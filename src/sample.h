@@ -30,6 +30,8 @@ It represents one sample.  It supports the following functions (given theta)
 #include "nums.h"
 #include <math.h>
 #include "globals.h"
+#include <Python/Python.h>
+#include <sstream>
 
 // globals for MPI
 int proc_id;
@@ -74,25 +76,40 @@ class sample{
   arbi_array<int> edge_to_pos;
 
   string folder;
+  string pdb_name;
+  string chain_letter;
 
   model* p_model;
-  num get_node_potential(int, int);
-  num get_edge_potential(int, int, int, int);
-  sample(model*, arbi_array<num>, arbi_array<num>, arbi_array<int>, arbi_array<int>, string);
+  num get_node_potential(arbi_array<num>, int, int);
+  num get_edge_potential(arbi_array<num>, int, int, int, int);
+  sample(model*, arbi_array<num>, arbi_array<num>, arbi_array<int>, arbi_array<int>, string, string, string);
   sample();
-  void set_node_potentials();
-  void set_edge_potentials();
-  void set_marginals();
+
+  arbi_array<num> get_node_potentials(arbi_array<num> theta);
+  arbi_array<num> get_edge_potentials(arbi_array<num> theta);
+  void get_marginals(arbi_array<num> theta, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals);
+  void get_marginals(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals);
   
+  num get_L(int which_obj, arbi_array<num>& theta);
+  void get_dL_dMu(int which_obj, arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num>& dL_dNode_Mu, arbi_array<num>& dL_dEdge_Mu);
+  arbi_array<num> get_dL_dTheta(int which_obj, arbi_array<num> theta);
+  arbi_array<num> get_dL_dTheta_Perturb(int which_obj, arbi_array<num> theta);
+
+  void get_dPot_dTheta(arbi_array<num> theta, arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& dNode, arbi_array<num>& dEdge);
+
   // functions related to likelihood
-  num get_likelihood();
-  arbi_array<num> get_likelihood_gradient();
-  num get_log_Z();
-  num get_config_likelihood();
+  num get_data_likelihood(arbi_array<num> theta);
+  arbi_array<num> get_data_likelihood_gradient(arbi_array<num> node_marginals, arbi_array<num> edge_marginals);
+  arbi_array<num> get_data_likelihood_gradient(arbi_array<num> theta);
+  num get_log_Z(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num> node_marginals, arbi_array<num> edge_marginals);
+  num get_data_potential(arbi_array<num> node_potentials, arbi_array<num> edge_potentials);
 
   // separate set of functions for each obj function
-  num get_exp_dist_obj();
-  arbi_array<num> get_exp_dist_gradient();
+  num get_L_expected_distance(arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num> dL_dNode_Mu, arbi_array<num> dL_dEdge_Mu);
+  arbi_array<num> get_dL_dMu_expected_distance(arbi_array<num> theta);
+  
+  num smooth_f(num x);
+  num d_smooth_f(num x);
   
   
   
