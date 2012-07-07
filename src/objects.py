@@ -293,7 +293,7 @@ class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
         return param({'location':constants.BIN_FOLDER})
 
     def get_self_param_keys(self):
-        return['pdb_name', 'chain_letter']
+        return ['pdb_name', 'chain_letter']
     
     def constructor(self, recalculate):
         residues = global_stuff.the_obj_manager.get_variable(pdb_chain_wrapper(self.params), recalculate)
@@ -311,13 +311,30 @@ class pdb_chain_pairwise_distance_obj_wrapper(obj_wrapper):
         #pdb.set_trace()
         return dists
 
+# for a site, tuple consisting of the sites indicies/distances sorted by distance from the site
+class pdb_chain_site_sorted_distances_obj_wrapper(obj_wrapper):
+
+    def get_hard_coded_params(self):
+        return param({'location':constants.BIN_FOLDER})
+
+    def get_self_param_keys(self):
+        return ['pdb_name', 'chain_letter', 'aa']
+
+    def constructor(self, recalculate):
+        dists = global_stuff.the_obj_manager.get_variable(pdb_chain_pairwise_distance_obj_wrapper(self.params), recalculate)
+        dist = dists[self.get_param('aa')]
+        temp = [ [dist[i],i] for i in range(len(dist)) ]
+        sorted_temp = sorted(temp, key = lambda x: x[0])
+        return [sorted_temp[i][0] for i in range(sorted_temp)], [sorted_temp[i][0] for i in range(sorted_temp)]
+        
+
 class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):
 
     def get_hard_coded_params(self):
         return param({'location':constants.BIN_FOLDER})
 
     def get_self_param_keys(self):
-        return['pdb_name', 'chain_letter']
+        return ['pdb_name', 'chain_letter']
 
     def constructor(self, recalculate):
         dists = global_stuff.the_obj_manager.get_variable(pdb_chain_pairwise_distance_obj_wrapper(self.params), recalculate)

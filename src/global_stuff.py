@@ -25,6 +25,12 @@ CSA_FILE = '../catres_sites'
 success_file = 'success_catres.txt'
 fail_file = 'fail_catres.txt'
 
+def get_object(p_wrapper, params, recalculate = False, to_pickle = True, use_pickle = True):
+    return the_obj_manager.get_variable(p_wrapper(params), recalculate, to_pickle, use_pickle)
+
+def get_file(p_wrapper, params, recalculate = False, option = 'r'){
+    return the_file_manager.get_file(p_wrapper(params), recalculate, option)
+
 def get_transpose(mat):
     height = len(mat)
     width = len(mat[0])
