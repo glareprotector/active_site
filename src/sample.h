@@ -30,8 +30,10 @@ It represents one sample.  It supports the following functions (given theta)
 #include "nums.h"
 #include <math.h>
 #include "globals.h"
-#include <Python/Python.h>
+#include "cpp_caller.h"
 #include <sstream>
+#include "helpers.h"
+#include <cstdlib>
 
 // globals for MPI
 int proc_id;
@@ -58,13 +60,13 @@ class sample{
 
  public:
   
-  arbi_array<num> node_potentials;
-  arbi_array<num> edge_potentials;
+  //arbi_array<num> node_potentials;
+  //arbi_array<num> edge_potentials;
   arbi_array<num> node_features;
   arbi_array<num> edge_features;
   arbi_array<int> true_states;
-  arbi_array<num> node_marginals;
-  arbi_array<num> edge_marginals;
+  //arbi_array<num> node_marginals;
+  //arbi_array<num> edge_marginals;
 
   num likelihood;
 
@@ -80,8 +82,8 @@ class sample{
   string chain_letter;
 
   model* p_model;
-  num get_node_potential(arbi_array<num>, int, int);
-  num get_edge_potential(arbi_array<num>, int, int, int, int);
+  num get_node_potential(arbi_array<num>&, int, int);
+  num get_edge_potential(arbi_array<num>&, int, int, int, int);
   sample(model*, arbi_array<num>, arbi_array<num>, arbi_array<int>, arbi_array<int>, string, string, string);
   sample();
 
@@ -105,14 +107,26 @@ class sample{
   num get_data_potential(arbi_array<num> node_potentials, arbi_array<num> edge_potentials);
 
   // separate set of functions for each obj function
-  num get_L_expected_distance(arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num> dL_dNode_Mu, arbi_array<num> dL_dEdge_Mu);
-  arbi_array<num> get_dL_dMu_expected_distance(arbi_array<num> theta);
+  void get_dL_dMu_expected_distance(arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num>& dL_dNode_Mu, arbi_array<num>& dL_dEdge_Mu);
+  num get_L_expected_distance(arbi_array<num> theta);
   
+  void get_dL_dMu_nodewise(arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num>& dL_dNode_Mu, arbi_array<num>& dL_dEdge_Mu);
+  num get_L_nodewise(arbi_array<num> theta);
+
   num smooth_f(num x);
   num d_smooth_f(num x);
+
+  void get_marginals_mean_field(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals);
+  void get_marginals_BP(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals);
   
-  
-  
+  num& get_message(arbi_array<num>& msgs, int i, int j, int s);
+
+  // junk that i should eventually get rid of
+  arbi_array<num> msgs1;
+  arbi_array<num> msgs2;
+  arbi_array<num>* old_msgs;
+  arbi_array<num>* new_msgs;
+  int times_called;
 };
 
 #endif

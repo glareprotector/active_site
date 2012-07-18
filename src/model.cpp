@@ -14,11 +14,9 @@ sample model::read_sample(string folder_name){
   string true_states_file = folder_name + string("true_y.csv");
   string edge_file = folder_name + string("edge_list.csv");
 
-  string pdb_name;
-  string chain_letter;
-  istringstream split(folder_name);
-  getline(split, pdb_name, '_');
-  getline(split, chain_letter);
+  string pdb_string = helpers::split_string(folder_name, '/', 0, 1);
+  string pdb_name = helpers::split_string(pdb_string, '_', 0, 1);
+  string chain_letter = helpers::split_string(pdb_string, '_', -1, 0);
 
   arbi_array<int> info = read_vect_to_int(info_file, 2, ' ');
   int num_nodes = info(0);
@@ -113,18 +111,10 @@ void model::normalize(){
   }
 }
 
-// calculates scores for every test based on the current value of theta
-void model::test(){
-  
-  update_testing();
-  report(results_folder);
-
-}
-    
-
 // writes to specified folder the scores for each score as well as their true class
-void model::report(arbi_array<num> theta, string report_folder){
+void model::report(arbi_array<num> theta){
 
+  
   arbi_array<int> true_classes;
   arbi_array<num> scores;
 
@@ -206,9 +196,9 @@ void model::report(arbi_array<num> theta, string report_folder){
   #endif
 
   //
-  string class_file = report_folder + string("true_classes.csv");
-  string score_file = report_folder + string("scores.csv");
-  string theta_file = report_folder + string("theta.csv");
+  string class_file = results_folder + string("true_classes.csv");
+  string score_file = results_folder + string("scores.csv");
+  string theta_file = results_folder + string("theta.csv");
   #ifdef SERIAL
 
   true_classes.write(class_file, ',');
@@ -302,15 +292,16 @@ void model::load_data(arbi_array<string> folder_names){
 
   
 
-model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string _results_folder, num _reg_constant, int _which_obj){
+model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string _results_folder, num _reg_constant, int _which_obj, int _which_infer){
 
   this->num_states = _num_states;
   this->num_node_features = _num_node_features;
   this->num_edge_features = _num_edge_features;
-  this->gradient = arbi_array<num>(1, this->theta_length);
+  //this->gradient = arbi_array<num>(1, this->theta_length);
   
   // set the node and edge map.  remember that edge map should be symmetric
   int idx = 0;
+ 
   this->node_map = arbi_array<int>(2, this->num_states, this->num_node_features);
   for(int i = 0; i < this->num_states; i++){
     for(int j = 0; j < this->num_node_features; j++){
@@ -328,22 +319,23 @@ model::model(int _num_states, int _num_node_features, int _num_edge_features, ar
       }
     }
   }
-  
+  cout<<node_map<<endl;
   this->theta_length = idx;
-  this->theta = arbi_array<num>(1, this->theta_length);
+  //this->theta = arbi_array<num>(1, this->theta_length);
 
   this->reg_constant = _reg_constant;
   this->mean_field_max_iter = _mean_field_max_iter;
   this->results_folder = _results_folder;
   this->which_obj = _which_obj;
+  this->which_infer = _which_infer;
 
   load_data(folder_names);
   assign(_num_folds, _which_fold);
-  normalize();
+  //normalize();
   //update_training();
 }
 
-arbi_array<num> model::get_dL_dTheta(arbi_array<num> theta){
+arbi_array<num> model::get_dL_dTheta(int which_obj, arbi_array<num> theta){
 
   arbi_array<num> ans(1, theta_length);
   ans.fill(0);
@@ -353,26 +345,25 @@ arbi_array<num> model::get_dL_dTheta(arbi_array<num> theta){
 
   // have to add in term due to regularization
   for(int i = 0; i < theta_length; i++){
-    ans(i) += theta(i) / reg_constant;
+    ans(i) += theta(i) * reg_constant;
   }
 
   return ans;
 }
 
-num model::get_L(arbi_array<num> theta){
+num model::get_L(int which_obj, arbi_array<num> theta){
 
   num ans = 0;
   for(int i = 0; i < num_training; i++){
     ans += data(training_indicies(i)).get_L(which_obj, theta);
-    }
   }
 
   // add in l2 penalty
   num penalty = 0;
   for(int i = 0; i < theta_length; i++){
-    penalty += theta(i) * theta(i);
+    penalty += reg_constant * theta(i) * theta(i);
   }
-  penalty /= (2.0 * reg_constant);
+  penalty /= 2.0;
 
   return ans + penalty;
 }
@@ -382,11 +373,16 @@ class My_Minimizer: public Minimizer{
  public:
   
   model* p_model;
+  int which_obj;
 
   My_Minimizer(model* _p_model): Minimizer(false) {p_model = _p_model;};
 
-  void ComputeGradient(vector<double>& gradient, const vector<double>& x){
+  void ComputeGradient(vector<double>& gradient, const vector<double>& x, int which_obj){
     
+    //assert(false);
+
+    //cout<<"gradient: "<<which_obj<<endl;
+
     #ifdef SERIAL
 
     arbi_array<num> theta(1, x.size());
@@ -394,12 +390,14 @@ class My_Minimizer: public Minimizer{
       theta(i) = x[i];
     }
     //p_model->set_theta(theta);
-    arbi_array<num> ans = p_model->get_dL_dTheta(theta);
+    arbi_array<num> ans = p_model->get_dL_dTheta(which_obj, theta);
+    //cout<<"GRAD333"<<ans<<endl;
     assert(gradient.size() == ans.linear_length);
     for(int i = 0; i < gradient.size(); i++){
       gradient[i] = ans(i);
     }
-    
+    //cout<<endl<<"GRADIENT"<<endl;
+    //cout<<ans<<endl;
     #else
 
     arbi_array<num> theta(1, x.size());
@@ -407,7 +405,7 @@ class My_Minimizer: public Minimizer{
       theta(i) = x[i];
     }
     //p_model->set_theta(theta);
-    arbi_array<num> ans = p_model->get_dL_dTheta(theta);
+    arbi_array<num> ans = p_model->get_dL_dTheta(which_obj, theta);
     num* ans_array = new num[p_model->theta_length];
     num* ans_sum_array = new num[p_model->theta_length];
     for(int i = 0; i < p_model->theta_length; i++){
@@ -434,16 +432,21 @@ class My_Minimizer: public Minimizer{
 
   }
 
-  double ComputeFunction(const vector<double>& x){
-
+  double ComputeFunction(const vector<double>& x, int which_obj){
+    //cout<<"COMPUTE FUNCTION"<<endl;
+    //cout<<"fxn: "<<which_obj<<endl;
     #ifdef SERIAL
-      
+    //cout<<"THETAXXX"<<endl;
     arbi_array<num> theta(1, x.size());
     for(int i = 0; i < x.size(); i++){
       theta(i) = x[i];
+      //cout<<x[i]<<" ";
     }
     //p_model->set_theta(theta);
-    double ans = p_model->get_L(theta);
+    
+    //cout<<"222222222"<<theta<<endl;
+    double ans = p_model->get_L(which_obj, theta);
+    assert(isfinite(ans));
     return ans;
     
     #else
@@ -452,8 +455,9 @@ class My_Minimizer: public Minimizer{
     for(int i = 0; i < x.size(); i++){
       theta(i) = x[i];
     }
+
     //p_model->set_theta(theta);
-    double ans = p_model->get_L(theta);
+    double ans = p_model->get_L(which_obj, theta);
 
     // now, send all messages to root for reducing.  then broadcast result back to everyone
     double ans_sum = 0;
@@ -469,12 +473,15 @@ class My_Minimizer: public Minimizer{
 
   }
 
-  virtual void ReportAUC(){
-    p_model->test();
-  }
-
   virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length){
     int s;
+    if(iteration%2 == 0){
+      arbi_array<num> theta_aa(1, theta.size());
+      for(int i = 0; i < theta.size(); i++){
+	theta_aa(i) = theta[i];
+      }
+      p_model->report(theta_aa);
+    }
   }
 
   virtual void Report (const string &s){
@@ -482,17 +489,18 @@ class My_Minimizer: public Minimizer{
   }
 };
 
+set<string> cpp_caller::added_paths;
 
 int main(int argc, char** argv){
 
   globals::init(argc, argv);
-  
-  PyObject* pName, pModule, pDict, pResult;
-
-  pName = PyString_FromString("get_stuff");
-  pModule = PyImport_Import(pName);
-  pDict = PyModule_GetDict(pModule);
-  
+  Py_Initialize();
+  PyObject* pSysPath= cpp_caller::_get_module_PyObject(string("sys"), string("path"));
+  ;
+  for(int i = 0; i < PyList_Size(pSysPath); i++){
+    cpp_caller::added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
+  }
+    
 
   #ifndef SERIAL
   
@@ -514,7 +522,7 @@ int main(int argc, char** argv){
   int num_node_features = 27;
   int num_edge_features = 1;
 
-  model m(num_states, num_node_features, num_edge_features, pdb_folders, globals::mean_field_max_iter, globals::num_folds, globals::which_fold, globals::results_folder, globals::reg_constant, globals::which_obj);
+  model m(num_states, num_node_features, num_edge_features, pdb_folders, globals::mean_field_max_iter, globals::num_folds, globals::which_fold, globals::results_folder, globals::reg_constant, globals::which_obj, globals::which_infer);
   
   
   #ifndef SERIAL 
@@ -531,12 +539,23 @@ int main(int argc, char** argv){
   #endif
 
   vector<num> w0(m.theta_length, 0);
+
+  /* for(int i = 0; i < 20; i++){
+    w0[i] = (num)(rand() % 40) / 40;
+    w0[i] = .01;
+    }*/
+  
+  for(int i = 0; i < m.theta_length; i++){
+    w0[i] = (num)(rand() % 40) / 40;
+    //w0[i] = 1000;
+    }
+
   My_Minimizer* minner = new My_Minimizer(&m);
   minner->LBFGS(w0,20000);
 
   #ifndef SERIAL
   MPI_Finalize();
   #endif
-
+  Py_Finalize();
   return 0;
 }

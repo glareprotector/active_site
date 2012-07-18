@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <stdio.h>
+#include <iomanip>
 
 typedef double num;
 using namespace std;
@@ -37,6 +38,8 @@ class arbi_array{
   arbi_array<T>& operator= (const arbi_array<T>&);
   bool operator==(const arbi_array<T>&);
 
+  arbi_array<T>& operator+= (const arbi_array<T>&);
+
   void append(T);
 
   int size(int);
@@ -46,6 +49,8 @@ class arbi_array{
   ~arbi_array();
 
   void fill(const T&);
+
+  T max();
 
   arbi_array<T> static transpose(arbi_array<T>);
 

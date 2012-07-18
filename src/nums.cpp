@@ -64,6 +64,7 @@ template <class T>
 void arbi_array<T>::write(string file_name, char sep = ','){
   ofstream myfile;
   myfile.open(file_name.c_str());
+  myfile<<setprecision(26);
 
   if(dim == 2){
     for(int i = 0; i < dims[0]; i++){
@@ -86,6 +87,15 @@ void arbi_array<T>::write(string file_name, char sep = ','){
       }
     }
   }
+}
+
+template <class T>
+arbi_array<T>& arbi_array<T>::operator+= (const arbi_array<T>& ar){
+  assert(this.linear_length == ar.linear_length);
+  for(int i = 0; i < this->linear_length; i++){
+    this->m_data[i] += ar.m_data[i];
+  }
+  return *this;
 }
 
 template <class T>
@@ -166,6 +176,18 @@ int arbi_array<T>::size(int which){
   else{
     return dims[which];
   }
+}
+
+template<class T>
+T arbi_array<T>::max(){
+  assert(linear_length > 0);
+  T ans = m_data[0];
+  for(int i = 0; i < linear_length; i++){
+    if(ans < m_data[i]){
+      ans = m_data[i];
+    }
+  }
+  return ans;
 }
 
 template<class T>
@@ -275,7 +297,7 @@ arbi_array<num> read_mat_to_num(string file, int num_row, int num_col, const cha
   ifstream in;
   get_ifstream(file.c_str(), in);
   string line;
-  char* line_cstr = new char[100000];
+  char* line_cstr = new char[1000000];
   char* elt;
   int i = 0;
   while(in.good() && i < num_row){
@@ -309,7 +331,7 @@ arbi_array<int> read_mat_to_int(string file, int num_row, int num_col, const cha
   ifstream in;
   get_ifstream(file.c_str(), in);
   string line;
-  char* line_cstr = new char[10000];
+  char* line_cstr = new char[1000000];
   char* elt;
   int i = 0;
   while(in.good() && i < num_row){

@@ -325,7 +325,7 @@ class pdb_chain_site_sorted_distances_obj_wrapper(obj_wrapper):
         dist = dists[self.get_param('aa')]
         temp = [ [dist[i],i] for i in range(len(dist)) ]
         sorted_temp = sorted(temp, key = lambda x: x[0])
-        return [sorted_temp[i][0] for i in range(sorted_temp)], [sorted_temp[i][0] for i in range(sorted_temp)]
+        return [sorted_temp[i][0] for i in range(len(sorted_temp))], [sorted_temp[i][1] for i in range(len(sorted_temp))]
         
 
 class pdb_chain_inverse_average_distances_obj_wrapper(obj_wrapper):

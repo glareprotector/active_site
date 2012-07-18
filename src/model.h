@@ -31,20 +31,21 @@ class model{
 
   arbi_array<num> gradient;
   num likelihood;
-  arbi_array<num> theta;
+  //arbi_array<num> theta;
 
   sample read_sample(string folder_name);
   void load_data(arbi_array<string> folder_names);
   void assign(int _num_folds, int _which_fold);
   void normalize();
-  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> _folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string results_folder, num _reg_constant, int which_obj);
-  num get_L(arbi_array<num> theta);
-  arbi_array<num> get_dL_dTheta(arbi_array<num> theta);
-  void report(arbi_array<num> theta, string report_folder);
+  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> _folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string results_folder, num _reg_constant, int _which_obj, int _which_infer);
+  num get_L(int which_obj, arbi_array<num> theta);
+  arbi_array<num> get_dL_dTheta(int which_obj, arbi_array<num> theta);
+  void report(arbi_array<num> theta);
   
   int mean_field_max_iter;
   num reg_constant;
   int which_obj;
+  int which_infer;
 
   string results_folder;
 
