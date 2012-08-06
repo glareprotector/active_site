@@ -1,16 +1,75 @@
 from wrapper import *
+
+import Bio.PDB
+import constants
+import global_stuff
+
+from Bio import SeqIO
+from Bio.Blast import NCBIXML
+from Bio.Blast.Applications import NcbipsiblastCommandline
+from Bio.PDB import Polypeptide
+from Bio.Blast import NCBIXML
+from Bio.Align.Applications import MuscleCommandline
+from Bio import AlignIO
+
+import subprocess
+import string
+import os
+
+import pdb
+
     
 class pdb_file_wrapper(file_wrapper):
-    
+
+    @dec
     def constructor(self, params, recalculate, to_pickle):
+        pdb.set_trace()
         pdb_file_name = self.get_param(params, 'pdb_name')
         pdbl = Bio.PDB.PDBList()
-        pdbl.retrieve_pdb_file(pdb_file_name, pdir=self.get_holding_folder(params))
-        subprocess.call(['mv', self.get_holding_folder(params) + string.lower('pdb'+pdb_file_name+'.ent'), self.get_holding_location(params)])
+        pdbl.retrieve_pdb_file(pdb_file_name, pdir=self.get_holding_folder())
+        subprocess.call(['mv', self.get_holding_folder() + string.lower('pdb'+pdb_file_name+'.ent'), self.get_holding_location()])
+        return open(self.get_holding_location(), 'r')
 
 the_pdb_file_wrapper = pdb_file_wrapper()
 
-f = the_pdb_file_wrapper.constructor(param({'pdb_name':'1asy'}), True, False)
+f = the_pdb_file_wrapper.constructor(param({'pdb_name':'1asy'}), False, True)
+
+        
+class pdb_chain_wrapper(obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle):
+        f = self.get_var_or_file(the_pdb_file_wrapper, params, recalculate, to_pickle)
+        pdb.set_trace()
+        structure = Bio.PDB.PDBParser().get_structure(self.get_param(params, 'pdb_name'), f)
+        chain = Bio.PDB.PPBuilder().build_peptides(structure[0][self.get_param(params, 'chain_letter')])
+        to_return = []
+        for chain_frag in chain:
+            to_return = to_return + chain_frag
+        # should raise exception here if error
+        return to_return
+
+class generic_pickle_wrapper(file_wrapper):
+
+    # same as regular file wrapper, except that it is initialized with a object_wrapper - the wrapper that created it
+    def finish_init(self)
+        self.source_wrapper = source_wrapper
+        self.cache = file_cache_for_wrapper(self)
+
+    def get_wrapper_name(self):
+        return self.__class__.__name__ + '-' + self.source_wrapper.get_wrapper_name()
+
+    def constructor(self, params, recalculate, to_pickle):
+        object = self.get_var_or_file(source_wrapper, params, recalculate, to_pickle)
+        # cache is file cache whose wrapper is a file wrapper
+        pickle.dump(object, open(self.get_holding_location(), 'wb'))
+        return open(self.get_holding_location(), 'w')
+
+the_pdb_chain_wrapper = pdb_chain_wrapper()
+
+q = the_pdb_chain_wrapper.constructor(param({'pdb_name':'1asy', 'chain_letter':'A'}), False, True)
+
+"""
 
 # note that the file version is constrained to be in the same folder as the object version
 class file_cache_decorator(object):
@@ -165,24 +224,6 @@ class pdb_obj_wrapper(obj_wrapper):
         f = global_stuff.the_file_manager.get_file_handle(pdb_file_wrapper(self.params), recalculate)    
         structure = Bio.PDB.PDBParser().get_structure(self.get_param('name'), f)
         return structure
-        
-class pdb_chain_wrapper(obj_wrapper):
-    
-    def get_hard_coded_params(self):
-        return param({'location':constants.BIN_FOLDER})
-    
-    def get_self_param_keys(self):
-        return ['pdb_name', 'chain_letter']
-    
-    def constructor(self, recalculate):
-        f = global_stuff.the_file_manager.get_file_handle(pdb_file_wrapper(self.params), recalculate)
-        structure = Bio.PDB.PDBParser().get_structure(self.get_param('name'), f)
-        chain = Bio.PDB.PPBuilder().build_peptides(structure[0][self.get_param('chain_letter')])
-        to_return = []
-        for chain_frag in chain:
-            to_return = to_return + chain_frag
-        # should raise exception here if error
-        return to_return
 
 class pdb_chain_seq_file_wrapper(file_wrapper):
     
@@ -433,3 +474,5 @@ class pdb_chain_conservation_score_obj_wrapper(obj_wrapper):
             s = string.split(line, sep='\t')
             to_return.append(float(s[1]))
         return to_return
+
+"""

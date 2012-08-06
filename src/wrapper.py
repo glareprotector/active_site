@@ -13,12 +13,15 @@ class file_cache_for_wrapper(object):
         self.the_wrapper = the_wrapper
         self.files_created = set()
 
+
     # if we are not trusting the files previously in file system, then we only say a file is there if it was created this round
+    @print_stuff_dec
     def has(self, object_key, recalculate):
+        #pdb.set_trace()
         if object_key in self.files_created:
             return True
         elif not recalculate:
-            if os.path.isfile(self.the_wrapper.get_location(object_key)):
+            if os.path.isfile(self.the_wrapper.get_file_location(object_key)):
                 return True
 
         return False
@@ -27,11 +30,13 @@ class file_cache_for_wrapper(object):
     # actually, can also be used for object creation
     def get(self, object_key, mode = 'r'):
         self.allocate(object_key)
-        return open(self.the_wrapper.get_location(object_key), mode)
+        return open(self.the_wrapper.get_file_location(object_key), mode)
 
     # moves object from temporary holding place to where it should be stored permenantly.  makes destination folder if needed. keep track of which files were get'ed in this execution
     # set is only called right after get is called
+    @print_stuff_dec
     def set(self, object_key, object, to_pickle):
+        #pdb.set_trace()
         self.allocate(object_key)
         subprocess.call(['mv', object.name, self.the_wrapper.get_file_location(object_key)])
         self.files_created.add(object_key)
@@ -39,6 +44,7 @@ class file_cache_for_wrapper(object):
 
     # creates folder for object whose type is specified by the wrapper
     # this step does the prep work allowing the object to be put in the cache, which in this case is the folder in the file system
+    @print_stuff_dec
     def allocate(self, object_key):
         if not os.path.exists(self.the_wrapper.get_folder(object_key)):
             os.makedirs(self.the_wrapper.get_folder(object_key))
@@ -53,31 +59,44 @@ class object_cache_for_wrapper(object):
 
         self.pickles_created = set()
 
+        self.finish_init()
+
     def has(self, object_key, recalculate):
         if object_key in self.dump:
             return True
         elif not recalculate:
-            if self.a_file_cache.has(object_key):
+            # if self.the_wrapper.pickle_wrapper.has(object_key, recalculate):
+            if self.a_file_cache.has(object_key, recalculate):
                 return True
     
     # if we don't trust pickles, only trust it if it was created this round.  stuff created this round is in self.dump
-    def get(self, object_key):
+    def get(self, object_key, recalculate):
+        pdb.set_trace()
         if object_key in self.dump:
             return dump[object_key]
-        elif self.a_file_cache.has(object_key):
-                object = pickle.load(self.a_file_cache.get(object_key, 'rb'))
-                self.dump[object_key] = object
-                return object
+        elif self.a_file_cache.has(object_key, recalculate):
+            # if self.the_wrapper.pickle_wrapper.has(object_key, recalculate):
+            object = pickle.load(self.a_file_cache.get(object_key, 'rb'))
+            self.dump[object_key] = object
+            return object
+        pdb.set_trace()
         raise KeyError
     
     # is it possible that set is called when the pickled object is accurate.  yes, only if you created the object, pickled, then deleted the used_keys and all_keys_cache pickles
+    # self.pickle_wrapper where constructor makes the pickle.  params would include object_key and object
     @print_stuff_dec
-    def set(self, object_key, object, to_pickle):
+    def set(self, object_key, object, to_pickle, params):
         self.dump[object_key] = object
-        if to_pickle and object_key not in self.pickles_created:
-            f = self.a_file_cache.get(object_key, 'wb')
-            pickle.dump(object, f)
-            self.pickles_created.add(object_key)
+        if to_pickle and not self.a_file_cache.has(object_key, True):
+        #if to_pickle and object_key not in self.pickles_created:
+            #f = self.a_file_cache.get(object_key, 'wb')
+            ##f = open(self.the_wrapper.get_holding_location(), 'rb')
+            ##pickle.dump(object, f)
+            ##self.a_file_cache.set(object_key, f)
+            #self.pickles_created.add(object_key)
+        if to_pickle: 
+            temp_f = self.the_wrapper.get_var_or_file(pickle_wrapper, params, True, None)
+            
         return object
 
     # don't have to do anything to put the object in the cache
@@ -196,11 +215,12 @@ def dec(f):
         self.temp_dependents_keys = set()
         self.all_keys_cache.set(all_keys_key, all_keys, to_pickle)
         object_key = get_objects_key(self, params, all_keys)
-        object = self.cache.set(object_key, object, to_pickle)
+        object = self.cache.set(object_key, object, to_pickle, params)
         return self.used_keys_cache.get(), all_keys, object
     
     @print_stuff_dec    
     def h(self, params, recalculate, to_pickle):
+        #pdb.set_trace()
         if self.used_keys_cache.has(recalculate):
             used_keys = self.used_keys_cache.get()
             all_keys_key = get_all_keys_key(self, params, used_keys)
@@ -209,7 +229,7 @@ def dec(f):
                 object_key = get_objects_key(self, params, all_keys)
                 if self.cache.has(object_key, recalculate):
                     object = self.cache.get(object_key)
-                    return self.used_keys, all_keys, object
+                    return used_keys, all_keys, object
         return cache_everything_f_poster(self, params, recalculate, to_pickle)
 
     return h
@@ -219,20 +239,27 @@ def dec(f):
 
 class wrapper(object):
 
+    def get_holding_location(self):
+        return constants.BIN_FOLDER + str(id(self))
+
     def get_folder(self, object_key):
         return constants.BIN_FOLDER
 
+    def get_wrapper_name(self):
+        return self.__class__.__name__
+
     def get_name(self, object_key):
-        return self.__class__.__name__ + str(object_key)
+        return self.get_wrapper_name + str(object_key)
     
     def __init__(self):
 
         self.used_keys_cache = used_keys_obj_cache(self)
         self.all_keys_cache = all_keys_obj_cache(self)
-        self.cache = self.get_cache()
 
         self.temp_used_keys = set()
         self.temp_dependents_keys = set()
+
+        self.finish_init()
 
     def get_param(self, params, key):
         self.temp_used_keys.add(key)
@@ -253,24 +280,27 @@ class wrapper(object):
 
 class obj_wrapper(wrapper):
 
-    def get_location(self, object_key):
+
+    def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key) + '.pickle'
 
-    def get_cache(self):
-        return object_cache_for_wrapper(self)
+    def finish_init(self):
+        self.cache = object_cache_for_wrapper(self)
+        self.pickle_wrapper = generic_pickle_wrapper(self)
 
 class file_wrapper(wrapper):
-    
-    def get_location(self, object_key):
+    @print_stuff_dec
+    def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key)
 
-    def get_cache(self):
-        return file_cache_for_wrapper(self)
-
-    def get_holding_location(self, params):
-        return constants.BIN_FOLDER + self.__class__.__name__ + '-' + str(params)
-
-    def get_holding_folder(self, params):
+    def finish_init(self)
+        self.cache = file_cache_for_wrapper(self)
+        
+    #@print_stuff_dec
+    #def get_holding_location(self, params):
+    #    return constants.BIN_FOLDER + self.__class__.__name__ + '-' + str(params)
+    @print_stuff_dec
+    def get_holding_folder(self):
         return constants.BIN_FOLDER
 
 class base_wrapper(obj_wrapper):
@@ -290,10 +320,10 @@ class squared_wrapper(obj_wrapper):
     def constructor(self, params, recalculate, to_pickle):
         return self.get_var_or_file(the_base_wrapper, params, recalculate, to_pickle) + 1
         
-the_squared_wrapper = squared_wrapper()
+#the_squared_wrapper = squared_wrapper()
 
 
-print 'aff'
-params = param({'x':5})
+#print 'aff'
+#params = param({'x':5})
 #pdb.set_trace()
-a = the_squared_wrapper.constructor(params, False, True)
+#a = the_squared_wrapper.constructor(params, False, True)
