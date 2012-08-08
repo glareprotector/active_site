@@ -45,7 +45,11 @@ class param(object):
             temp[key] = cls.get_param(params, key)
         return param(temp)
 
+    def __hash__(self):
+        return hash(self.__str__())
 
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
     # returns A U B, with values in A taking precedence
 
