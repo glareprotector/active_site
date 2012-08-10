@@ -87,4 +87,4 @@ dict = {'pdb_name':'1asy', 'chain_letter':'A', 'edge_feature_list':[the_ones_fxn
 
 params = param(dict)
 #print 'about to call node_features constructor'
-used_keys, all_keys, node_features  = objects.the_pdb_chain_pairwise_dist_obj_w.constructor(params, True, True, True)
+used_keys, all_keys, node_features  = objects.the_node_features_obj_w.constructor(params, False, True, True)

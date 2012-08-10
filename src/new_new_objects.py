@@ -19,7 +19,7 @@ from Bio import AlignIO
 import subprocess
 import string
 import os
-
+import random
 import pdb
 
 
@@ -198,21 +198,112 @@ class edge_features_obj_w(wrapper.mat_obj_wrapper):
 
 the_edge_features_obj_w = edge_features_obj_w()
 
-class crf_data_w(wrapper.obj_wrapper):
+class experiment_info_file_w(wrapper.file_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False):
-        edge_list = self.get_var_or_file(the_pdb_chain_edge_list_obj_w, params, recalculate, True)
-        node_features = self.get_var_or_file(the_node_features_obj_w, params, recalculate, True)
-        edge_features = self.get_var_or_file(the_edge_features_obj_w, params, recalculate, True)
-        return edge_list, node_features, edge_features
+        # this simply extracts every single parameter, puts them into a dict, and prints the dict
+        the_dict = {}
+        the_dict["dist_cut_off"] = self.get_param(params, "dist_cut_off");
+        # data_list will be list of tuples of (pdb_name, chain_letter)
+        the_dict["data_list"] = self.get_param(params, "data_list")
+        f = open(self.get_holding_location(), 'w')
+        f.write(str(the_dict))
+        return f
 
-the_crf_data_w = crf_data_w()
+the_experiment_info_file_w = experiment_info_w()
+
+class formatted_data_list_obj_w(wrapper.mat_obj_wrapper):
+
+    # params should include file name want to read - 'data_list_file'
+    @dec
+    def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        f = open(self.get_param(params, 'data_list_file'), 'r')
+        ans = []
+        for line in f:
+            ans.append(string.split(line, sep='_'))
+        return ans
+
+the_formatted_data_list_obj_w = formatted_data_list_obj_w()
+        
+class experiment_results_obj_w(wrapper.mat_obj_wrapper):
+
+    # params will be [(scores, sizes, pdb_name, chain_letter),   ]
+    # params which which it is stored does NOT include these things...only data_list, params for getting features
+    @dec
+    def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        # in perfect world, this would have been generated model file, which then generates results.  so simulate this by getting parameters from experiment info
+        # this would have been the root of call tree
+        experiment_info_pretending_to_be_model_params = self.get_var_or_file(the_experiment_info_file_w, params, recalculate, False, True)
+        # node_features can get passed params, because params would have been given to this wrapper which would create model and use them to get node features
+        # after getting scores, have wrappers depending on scores that calculate roc, other measures
+        # i can't call them arbitrary order, so have to call scores, then other wrappers
+        scores = self.get_param(params, 'scores', False)
+        sizes = self.get_param(param, 'sizes', False)
+        pdb_names = self.get_param(param, 'pdb_names', False)
+        chain_letters = self.get_param(param, 'chain_letters', False)
+        num_samples = len(scores)
+        pos = 0
+        mat = []
+        # alternate between pdb_names, chain_letter and scores
+        for i in range(num_samples):
+            mat.append([pdb_names[i], chain_letters[i]])
+            mat.append(scores[pos:pos+sizes[i]])
+        return mat
+
+the_experiment_results_obj_w = experiment_results_obj_w();
+
+class true_states_obj_w(wrapper.vect_obj_wrapper):
+    
+    @dec
+    def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        map = self.get_var_or_file(the_pdb_chain_aa_to_pos_obj_w, params, recalculate, True, False)
+        return [random.randrange(0,2) for x in range(len(map))]
+
+the_true_states_obj_w = true_states_obj_w()
+
+class roc_curve_input_obj_w(wrapper.mat_obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        results = self.get_var_or_file(the_experiment_results_obj_w, params, recalculate, to_pickle, False)
+        assert len(results) % 2 == 0
+        num_samples = len(results) / 2
+        roc_classes = []
+        roc_scores = []
+        for i in range(num_samples):
+            pdb_name = results[2 * i][0]
+            chain_letter = results[ 2 * i][1]
+            scores = results[(2 * i) + 1]
+            self.set_param(params, "pdb_name", pdb_name)
+            self.set_param(params, "chain_letter", chain_letter)
+            true_states = self.get_var_or_file(the_true_states_obj_w, params, recalculate, True, True)
+            roc_classes = roc_classes + true_states
+            roc_scores = roc_scores + scores
+            
+        ans = global_stuff.transpose([roc_classes, roc_scores])
+        return ans
+
+the_roc_curve_input_obj_w = roc_curve_input_obj_w()
+
+class roc_curve_plot_file_w(wrapper.file_wrapper):
+
+    # params will be those required by experiment_results, which are those required by experiment_info.
+    @dec
+    def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        f  = self.get_var_or_file(the_roc_curve_input_obj_w.cache.file_dumper, params, recalculate, False, False)
+        subprocess.call(['yard-plot', '-o', self.get_holding_location(), f.name])
+        return f
+
+the_roc_curve_plot_file_w = roc_curve_plot_file_w()
+        
+        
+        
 
 
 
-
-
-# run_data file
+# py_initialize
+# from c++, get params as python object
+# have wrapper 
 # create model using python params.  store params in python. model will then read in params
 # sample will have to set some parameters

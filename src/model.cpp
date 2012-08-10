@@ -1,6 +1,8 @@
 #include "model.h"
 #include "LBFGS.h"
 #include <vector>
+#include "helpers.h"
+
 #ifndef SERIAL 
 #include <mpi.h> 
 #endif
@@ -15,13 +17,31 @@ sample model::read_sample(string folder_name){
   string edge_file = folder_name + string("edge_list.csv");
 
   string pdb_string = helpers::split_string(folder_name, '/', 0, 1);
+  
+
+  #ifdef PARAM
+  // keep for now only bc sample for now takes these in as input
+  string pdb_name = cpp_caller::py_string_to_CPPString(cpp_caller::get_param(globals::pParams, string("pdb_name")));
+  string chain_letter = cpp_caller::py_string_to_CPPString(cpp_caller::get_param(globals::pParams, string("chain_letter")));
+
+
+  #else
+  
   string pdb_name = helpers::split_string(pdb_string, '_', 0, 1);
   string chain_letter = helpers::split_string(pdb_string, '_', -1, 0);
+  #endif
 
   arbi_array<int> info = read_vect_to_int(info_file, 2, ' ');
   int num_nodes = info(0);
   int num_edges = info(1);
   
+  #ifdef PARAM
+  arbi_array<num> node_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_node_features_obj_w"), globals::pParams, recalculate, true, true), true);
+  arbi_array<num> edge_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_edge_features_obj_w"), globals::pParams, recalculate, true, true), true);  
+  arbi_array<int> true_states = cpp_caller::py_int_list_to_cpp_int_vect(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_true_states_obj_w"), globals::pParams, recalculate, true, true), true);
+  arbi_array<int> edge_list = cpp_caller::py_int_mat_to_cpp_int_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_edge_list_obj_w"), globals::pParams, recalculate, true, true), true);
+
+  #else
   arbi_array<num> node_features_transposed = read_mat_to_num(node_feature_file, this->num_node_features, num_nodes);
   arbi_array<num> node_features = arbi_array<num>::transpose(node_features_transposed);
 
@@ -35,6 +55,9 @@ sample model::read_sample(string folder_name){
   }
 
   arbi_array<int> edges = read_mat_to_int(edge_file, num_edges, 2);
+
+  #endif
+
   return sample(this, node_features, edge_features, edges, true_states, folder_name, pdb_name, chain_letter);
 }
 
@@ -117,15 +140,23 @@ void model::report(arbi_array<num> theta){
   
   arbi_array<int> true_classes;
   arbi_array<num> scores;
+  // sample_labels will be of length (4+1) * num_testing, with the 1 for the null characters, 4 for the length of sample_names
+  char* sample_pdb_names;
+  char* sample_chain_letters;
+
+  // need to retrieve the length of sample_pdb_names and sample_chain_letters later
+  int num_testing_master;
 
   // first get total length of stuff to report
   int num_data = 0;
   for(int i = 0; i < num_testing; i++){
     num_data += data(testing_indicies(i)).num_nodes;
   }
+  
 
   #ifndef SERIAL
 
+  // give the root node the total number of sites
   MPI_Status status;
   int num_data_sum;
   MPI_Barrier(MPI_COMM_WORLD);
@@ -133,24 +164,49 @@ void model::report(arbi_array<num> theta){
   MPI_Barrier(MPI_COMM_WORLD);
   MPI_Bcast(&num_data_sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD);
+
+  // give the root node the total number of testing samples
+  int num_testing_sum;
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Reduce(&num_testing, &num_testing_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Bcast(&num_testing_sum, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+  num_testing_master = num_testing_sum;
   
-  // root process gets larger true_classes and scores
+  // root process gets larger true_classes and scores and sample name labels and letters
   if(proc_id == 0){
     true_classes = arbi_array<int>(1, num_data_sum);
     scores = arbi_array<num>(1, num_data_sum);
+    int sample_pdb_names_length = num_testing_sum * 5;
+    sample_pdb_names = new char[sample_pdb_names_length];
+    int sample_chain_letters_length = num_testing_sum * 2;
+    sample_chain_letters = new char[sample_chain_letters_length];
+    sample_lengths = new int[num_testing_sum];
   }
   else{
     true_classes = arbi_array<int>(1, num_data);
     scores = arbi_array<num>(1, num_data);
+    int sample_pdb_names_length = num_testing * 5;
+    sample_labels = new char[sample_pdb_names_length];
+    int sample_chain_letters_length = num_testing * 2;
+    sample_chain_letters = new char[sample_chain_letters_length];
+    sample_lengths = new int[num_testing];
   }
 
   #else
 
   true_classes = arbi_array<int>(1, num_data);
   scores = arbi_array<num>(1, num_data);
+  int sample_pdb_names_length = num_testing * 5;
+  sample_pdb_names = new char[sample_pdb_names_length];
+  int sample_chain_letters_length = num_testing * 2;
+  sample_chain_letters_length = new char[sample_chain_letters_length];
+  sample_lengths = new int[num_testing];
+  num_testing_master = num_testing;
 
   #endif
-
+  // each node gets list of sizes of its samples
   // put own scores/classes into the vector
   // score is the marginal of the marginal class
   int idx = 0;
@@ -162,7 +218,16 @@ void model::report(arbi_array<num> theta){
       scores(idx) = node_marginals(j,1);
       idx++;
     }
+    sample_lengths[i] = data(testing_indicies(i)).num_nodes;
   }
+  // likewise, each node gets a char of length 5 * num_testing for pdb_names, char of length 2 * num_testing for chain_letters
+  for(int i = 0; i < num_testing; i++){
+    strcpy(sample_pdb_names[i*5], data(testing_indicies(i)).pdb_name.c_str());
+    strcpy(sample_chain_letters[i*2], data(testing_indicies(i)).chain_letter.c_str());
+  }
+    
+     
+
 
   // if doing things in parallel, have to add more stuff to the vectors
   
@@ -170,30 +235,54 @@ void model::report(arbi_array<num> theta){
 
   // each process takes turns sending messages to process 0
   int pos = idx;
+  int sample_pos = num_testing;
   for(int i = 1 ; i < num_procs; i++){
     int* class_buf;
     num* score_buf;
-    int next_size;
+    int next_score_size;
+    int next_sample_size;
     if(proc_id == i){
       class_buf = true_classes.m_data;
       score_buf = scores.m_data;
-      next_size = true_classes.size(0);
-      MPI_Send(&next_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-      MPI_Send(class_buf, next_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
-      MPI_Send(score_buf, next_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+      next_score_size = true_classes.size(0);
+      next_sample_size = num_testing;
+      MPI_Send(&next_score_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(&next_sample_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(class_buf, next_score_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(score_buf, next_score_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+      
+      MPI_Send(sample_pdb_names, 5 * next_sample_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(sample_chain_letters, 2 * next_sample_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(sample_lengths, num_testing, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
     }
     else if(proc_id == 0){
       class_buf = true_classes.m_data + pos;
       score_buf = scores.m_data + pos;
-      MPI_Recv(&next_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-      MPI_Recv(class_buf, next_size, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-      MPI_Recv(score_buf, next_size, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(&next_score_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(&next_sample_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(class_buf, next_score_size, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(score_buf, next_score_size, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(sample_pdb_names[5 * sample_pos], 5 * next_sample_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(sample_chain_letters[5*sample_pos], 2 * next_sample_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(sample_lengths[sample_pos], next_sample_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
       pos += next_size;
+      sample_pos += next_sample_size;
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
 
   #endif
+
+  // now, parse the long strings into a name/letter for each sample.  only do this for proc_id 0
+  // store each as arbi_array of strings
+  arbi_array<string> parsed_pdb_names(1, num_testing_master);
+  arbi_array<string> parsed_chain_letters(1, num_testing_master);
+  if(proc_id == 0){
+    for(int i = 0; i < num_testing_master; i++){
+      parsed_pdb_names(i) = string(sample_pdb_names[5 * i]);
+      parsed_chain_letters(i) = string(sample_chain_letters[2 * i]);
+    }
+  }
 
   //
   string class_file = results_folder + string("true_classes.csv");
@@ -204,6 +293,8 @@ void model::report(arbi_array<num> theta){
   true_classes.write(class_file, ',');
   scores.write(score_file, ',');
 
+  // call 
+
   #else
   
   if(proc_id == 0){
@@ -213,6 +304,14 @@ void model::report(arbi_array<num> theta){
   }
 
   #endif
+  
+  // now, feed this info to a cpp_caller.  first need to convert sample_lengths to arbi_array
+  if(proc_id == 0){
+    arbi_array<int> sample_lengths_ar(1, num_testing_master);
+    for(int i = 0; i < num_testing_master; i++){
+      sample_lengths_ar(i) = sample_lengths[i];
+    }
+    
 
 }
 
@@ -241,16 +340,33 @@ void model::assign(int _num_folds, int _which_fold){
 
 }
 
+// future usage: data_list is stored as param.  one by one, set pdb_name, call sample constructor with those params, which will be global
 
 void model::load_data(arbi_array<string> folder_names){
 
   #ifdef SERIAL
   
+  #ifdef PARAM
+  arbi_array<string> data_list = cpp_caller::py_string_mat_to_CPPString_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_formatted_data_list_obj_w"), globals::pParams, recalculate, false, true), true);
+  int num_samples = data_list.size(0);
+
+
+  #else
+
   int num_samples = folder_names.size(0);
+  
+  #endif
+
   cout<<"building training samples"<<endl;
 
   for(int i = 0; i < num_samples; i++){
     try{
+
+      #ifdef PARAM
+      cpp_caller::set_param(globals::pParams, string("pdb_name"), &data_list(i,0), cpp_caller::STRING_TYPE);
+      cpp_caller::set_param(globals::pParams, string("chain_letter"), &data_list(i,1), cpp_caller::STRING_TYPE);
+      #endif
+
       sample s = read_sample(folder_names(i));
       this->data.append(s);
     }
@@ -267,7 +383,7 @@ void model::load_data(arbi_array<string> folder_names){
 
   cout<<"building training samples"<<endl;
   // each process gets training data based on it's process id
-  for(int i = 0; i < folder_names.size(0); i++){
+  for(int i = 0; i < num_samples; i++){
     try{
       sample s = read_sample(folder_names(i));
       bool do_i_care = (i % num_procs) == proc_id;
@@ -291,7 +407,7 @@ void model::load_data(arbi_array<string> folder_names){
 
 
   
-
+// params should have pdb list.  retrieve the list, set individual
 model::model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string _results_folder, num _reg_constant, int _which_obj, int _which_infer){
 
   this->num_states = _num_states;
@@ -333,6 +449,11 @@ model::model(int _num_states, int _num_node_features, int _num_edge_features, ar
   assign(_num_folds, _which_fold);
   //normalize();
   //update_training();
+
+  // results file wrapper should depend on something - the experiment info wrapper, which just prints out all params.  actually the model is the object created by the experiment wrapper
+  // create params in c++, send to python, create experiment into wrapper using those params, which (fake calls model).  output spit to writer that depends on experiment wrapper
+  // 
+
 }
 
 arbi_array<num> model::get_dL_dTheta(int which_obj, arbi_array<num> theta){
@@ -500,6 +621,24 @@ int main(int argc, char** argv){
   for(int i = 0; i < PyList_Size(pSysPath); i++){
     cpp_caller::added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
   }
+
+
+  // insert params into the python environment
+  globals::pParams = cpp_caller:get_new_empty_param();
+  int dist_cut_off = 5;
+  cpp_caller::set_param(globals::pParams, string("dist_cut_off"), &dist_cut_off, cpp_caller::INT_TYPE);
+  num evalue = 1e-10;
+  cpp_caller::set_param(globals::pParams, string("evalue"), &evalue, cpp_caller::NUM_TYPE);
+  string data_list_file("../data/catres_six.pdb_list");
+  cpp_caller::set_param(globals::pParams, string("data_list_file"), &pdb_list_file, cpp_caller::STRING_MAT);
+
+  // create the experiment info file.  the experiment output results logically depend on this info file, since model reads info, creates model and then output.
+  // result is a file handle which we don't do anything with, so decref it right away
+  PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("experiment_info_file"), globals.pParams, true, false, false);
+  Py_DECREF(pResult);
+
+  
+  
     
 
   #ifndef SERIAL
@@ -508,6 +647,10 @@ int main(int argc, char** argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   
+  #else
+
+  proc_id = 0;
+
   #endif
 
   arbi_array<string> pdb_folders = read_vect_to_string(globals::pdb_list_file);

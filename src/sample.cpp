@@ -428,7 +428,7 @@ num sample::get_L_nodewise(arbi_array<num> theta){
   for(int i = 0; i < num_nodes; i++){
     arbi_array<int> sorted_pos;
     arbi_array<num> sorted_distances;
-    sorted_distances_getter::get(pdb_name, chain_letter, i, sorted_pos, sorted_distances);
+    //sorted_distances_getter::get(pdb_name, chain_letter, i, sorted_pos, sorted_distances);
     loss += smooth_f(node_marginals(i,1) - true_states(i));
   }
 

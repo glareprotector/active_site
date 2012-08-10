@@ -1,4 +1,5 @@
 #include <string>
+#include <Python.h>
 
 #ifndef GLOBALS_H
 #define GLOBALS_H
@@ -17,6 +18,7 @@ namespace globals{
   int which_obj;
   int which_infer;
   double eps;
+  PyObject* pParams;
 
   void init(int argc, char** argv){
     data_folder = string("/home/fultonw/active_site/active_site/test/");
@@ -27,7 +29,7 @@ namespace globals{
     which_fold = 0;
     results_folder = string("/home/fultonw/active_site/active_site/src/test_data/");
     reg_constant = 2;
-    which_obj = 2;
+    which_obj = 0;
     which_infer = 0;
     eps = 1.11e-16;
   }
