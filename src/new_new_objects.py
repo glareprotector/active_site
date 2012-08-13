@@ -3,6 +3,7 @@ import new_features as features
 from wrapper_decorator import dec
 #from wrapper import *
 import wrapper
+import param
 
 import Bio.PDB
 import constants
@@ -16,6 +17,7 @@ from Bio.Blast import NCBIXML
 from Bio.Align.Applications import MuscleCommandline
 from Bio import AlignIO
 
+import math
 import subprocess
 import string
 import os
@@ -139,6 +141,7 @@ class pdb_chain_edge_list_obj_w(wrapper.mat_obj_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        pdb.set_trace()
         res_dists = self.get_var_or_file(the_pdb_chain_pairwise_dist_obj_w, params, recalculate, True)
         aa_to_pos = self.get_var_or_file(the_pdb_chain_aa_to_pos_obj_w, params, recalculate, True)
         chain_seq = self.get_var_or_file(the_pdb_chain_seq_obj_w, params, recalculate, True)
@@ -148,9 +151,9 @@ class pdb_chain_edge_list_obj_w(wrapper.mat_obj_wrapper):
         for i in range(len(chain_seq)):
             for j in range(i):
                 if math.fabs(i-j) == 1:
-                    edges.append([i,j])
+                    edges.append([int(i),int(j)])
                 elif res_dists[i][j] < self.get_param(params, 'dist_cut_off') and math.fabs(i-j) > 5:
-                    edges.append([i,j])
+                    edges.append([int(i),int(j)])
 
         return edges
 
@@ -173,6 +176,7 @@ class node_features_obj_w(wrapper.mat_obj_wrapper):
             node_features.append(temp)
         return node_features
 
+#pdb.set_trace()
 the_node_features_obj_w = node_features_obj_w()
 
 class edge_features_obj_w(wrapper.mat_obj_wrapper):
@@ -180,6 +184,7 @@ class edge_features_obj_w(wrapper.mat_obj_wrapper):
     # params will contain edge_feature_list
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        pdb.set_trace()
         feature_list = self.get_param(params, 'edge_feature_list')
         aa_to_pos = self.get_var_or_file(the_pdb_chain_aa_to_pos_obj_w, params, recalculate, True)
         edge_list = self.get_var_or_file(the_pdb_chain_edge_list_obj_w, params, recalculate, True)
@@ -193,7 +198,7 @@ class edge_features_obj_w(wrapper.mat_obj_wrapper):
             temp = []
             for the_fxn_w in feature_list:
                 temp = temp + self.get_var_or_file(the_fxn_w, params, recalculate, False)
-            edge_features = edge_features + temp
+            edge_features.append(temp)
         return edge_features
 
 the_edge_features_obj_w = edge_features_obj_w()
@@ -203,15 +208,20 @@ class experiment_info_file_w(wrapper.file_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False):
         # this simply extracts every single parameter, puts them into a dict, and prints the dict
+        print params
+#        pdb.set_trace()
         the_dict = {}
         the_dict["dist_cut_off"] = self.get_param(params, "dist_cut_off");
         # data_list will be list of tuples of (pdb_name, chain_letter)
-        the_dict["data_list"] = self.get_param(params, "data_list")
+        the_dict["data_list_file"] = self.get_param(params, "data_list_file")
+        the_dict['node_feature_list'] = self.get_param(params, "node_feature_list")
+        the_dict['edge_feature_list'] = self.get_param(params, "edge_feature_list")
         f = open(self.get_holding_location(), 'w')
         f.write(str(the_dict))
+        f.close()
         return f
 
-the_experiment_info_file_w = experiment_info_w()
+the_experiment_info_file_w = experiment_info_file_w()
 
 class formatted_data_list_obj_w(wrapper.mat_obj_wrapper):
 
@@ -221,7 +231,9 @@ class formatted_data_list_obj_w(wrapper.mat_obj_wrapper):
         f = open(self.get_param(params, 'data_list_file'), 'r')
         ans = []
         for line in f:
-            ans.append(string.split(line, sep='_'))
+            ans.append(string.split(string.strip(line), sep='_'))
+       # pdb.set_trace()
+        print ans
         return ans
 
 the_formatted_data_list_obj_w = formatted_data_list_obj_w()
@@ -257,6 +269,7 @@ class true_states_obj_w(wrapper.vect_obj_wrapper):
     
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False):
+        pdb.set_trace()
         map = self.get_var_or_file(the_pdb_chain_aa_to_pos_obj_w, params, recalculate, True, False)
         return [random.randrange(0,2) for x in range(len(map))]
 
@@ -295,12 +308,18 @@ class roc_curve_plot_file_w(wrapper.file_wrapper):
         subprocess.call(['yard-plot', '-o', self.get_holding_location(), f.name])
         return f
 
+def print_stuff(x):
+    #pdb.set_trace()
+    print 'printing!!!!!!!!'
+    print x
+
 the_roc_curve_plot_file_w = roc_curve_plot_file_w()
-        
-        
-        
 
 
+the_dict = {'data_list_file':'catres_two.pdb_list', 'edge_feature_list':[features.the_ones_fxn_w], 'node_feature_list':[features.the_residue_categorical_fxn_w, features.the_residue_class_categorical_fxn_w, features.the_inverse_avg_dist_fxn_w], 'dist_cut_off':5}
+the_params = param.param(the_dict)
+#pdb.set_trace()        
+the_experiment_info_file_w.constructor(the_params, False, False, False)
 
 # py_initialize
 # from c++, get params as python object

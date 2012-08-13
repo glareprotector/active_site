@@ -108,6 +108,7 @@ class all_keys_obj_cache(object):
         self.dump = {}
         self.the_wrapper = the_wrapper
         self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + the_wrapper.__class__.__name__ + '.pickle'
+        self.existing_dump = {}
         if os.path.isfile(self.pickle_location):
             print self.pickle_location, self, the_wrapper
             self.existing_dump = pickle.load(open(self.pickle_location, 'rb'))
@@ -146,28 +147,36 @@ class used_keys_obj_cache(object):
 
     def __init__(self, the_wrapper):
         self.dump = None
+        self.val = None
         self.the_wrapper = the_wrapper
         self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + the_wrapper.__class__.__name__ + '.pickle'
-        
-        self.pickle_created = False
+
+        if os.path.isfile(self.pickle_location):
+            self.dump = pickle.load(open(self.pickle_location, 'rb'))
+            self.pickle_created = True
+        else:
+            self.pickle_created = False
 
     # recalculate specifies whether to look at possible pickle file and use it
     def has(self, recalculate):
-        if self.dump != None:
+        if self.val != None:
             return True
         elif not recalculate:
-            if os.path.isfile(self.pickle_location):
+            if self.dump != None:
                 return True
+        elif self.pickle_created == True:
+            return self.dump
         return False
 
     # recalculate determines whether to look at pickle
-    def get(self):
-        if self.dump != None:
+    def get(self, recalculate):
+        if self.val != None:
+            return self.val
+        elif not recalculate:
+            if self.dump != None:
+                return self.dump
+        elif self.pickle_created == True:
             return self.dump
-        elif os.path.isfile(self.pickle_location):
-            val = pickle.load(open(self.pickle_location, 'rb'))
-            self.dump = val
-            return val
         raise KeyError
 
     def set(self, val, to_pickle):

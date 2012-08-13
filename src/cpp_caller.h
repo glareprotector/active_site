@@ -76,13 +76,6 @@ class cpp_caller{
     return pObj;
   }
 
-  static int INT_TYPE = 0;
-  static int NUM_TYPE = 1;
-  static int STRING_TYPE = 2;
-  static int STRING_VECT = 3;
-  static int INT_VECT = 4;
-  static int NUM_VECT = 5;
-  static int STRING_MAT = 6;
 
   // returns new empty param object
   static PyObject* get_new_empty_param(){
@@ -99,41 +92,46 @@ class cpp_caller{
     PyObject* pKey = PyString_FromCPPString(key);
     PyObject* pObj;
     switch(type){
-    case cpp_caller::INT_TYPE:
+    case globals::INT_TYPE:
       pObj = PyInt_FromLong(*((int*)val_p));
       break;
-    case cpp_caller::NUM_TYPE:
+    case globals::NUM_TYPE:
       pObj = PyFloat_FromDouble(*(num*)val_p);
       break;
-    case cpp_caller::STRING_TYPE:
+    case globals::STRING_TYPE:
       pObj = PyString_FromCPPString(*(string*)val_p);
       break;
-    case cpp_caller::STRING_VECT:
+    case globals::STRING_VECT:
       pObj = cpp_caller::cpp_string_vect_to_py_string_list(*(arbi_array<string>*)val_p);
       break;
-    case cpp_caller::NUM_VECT:
+    case globals::NUM_VECT:
       pObj = cpp_caller::cpp_num_vect_to_py_float_list(*(arbi_array<num>*)val_p);
       break;
-    case cpp:caller::STRING_MAT:
-      pObj = cpp_caller::cpp_string_mat_to_py_string_mat(*(arbi_array<String>*)val_p);
+    case globals::STRING_MAT:
+      pObj = cpp_caller::CPPString_mat_to_py_string_mat(*(arbi_array<string>*)val_p);
       break;
     }
-    PyObject* pSetParamConstructorArgs = PyTuple_New(3); // new
-    PyTuple_SetItem(pSetParamConstructorArgs, 0, pParams); // ref to pKey stolen
-    // don't want ref to pKey to be stolen, so artificially increment it
-    Py_INCREF(pParams);
-    PyTuple_SetItem(pSetParamConstructorArgs, 1, pKey); // ref to pKey stolen
-    PyTuple_SetItem(pSetParamConstructorArgs, 2, pObj); // ref to pObj stolen
-    PyObject* pResult = call_PyFunc(string("param"), string("set_param"), pSetParamConstructorArgs);
-    Py_DECREF(pSetParamConstructorArgs);
+
+
+    PyObject* pMethodName = PyString_FromCPPString(string("set_param"));
+    PyObject* pResult = PyObject_CallMethodObjArgs(pParams, pMethodName, pKey, pObj, NULL);
+    Py_DECREF(pKey);
+    Py_DECREF(pObj);
+    Py_DECREF(pMethodName);
+    Py_DECREF(pResult);
   }
 
   // retrieves param from pParams of given key
-  PyObject* get_param(PyObject* pParams, string key){
+  static PyObject* get_param(PyObject* pParams, string key){
     
     PyObject* pMethodName = PyString_FromCPPString(string("get_param"));
-    PyObject* pKey = PyString_FromCPPString(key);
-    PyObject* pResult = PyObject_CallMethodObjArgs(pWrapperInstance, pMethodName, pParams, pKey);
+    PyObject* pKey = cpp_caller::PyString_FromCPPString(key);
+    PyObject* pResult = PyObject_CallMethodObjArgs(pParams, pMethodName, pKey, NULL);
+    PyObject_Print(pKey, stdout, 0);
+    PyObject_Print(pResult, stdout, 0);
+    py_print(pKey);
+    py_print(pParams);
+    py_print(pResult);
     Py_DECREF(pMethodName);
     Py_DECREF(pKey);
     return pResult;
@@ -141,17 +139,18 @@ class cpp_caller{
     
   
   // converts python list of float to c++ array of nums
-  static arbi_array<num> py_floats_list_to_cpp_nums_vect(PyObject* pList){
+  static arbi_array<num> py_float_list_to_cpp_num_vect(PyObject* pList, bool decref = false){
     int len = PyList_Size(pList);
     arbi_array<num> result(1, len);
     for(int i = 0; i < len; i++){
       result(i) = (num)PyFloat_AsDouble(PyList_GetItem(pList, i));
     }
+    if(decref) Py_DECREF(pList);
     return result;
   }
 
   // convert c++ array of nums to python list of floats
-  static PyObject* cpp_nums_vect_to_py_floats_list(arbi_array<nums> x){
+  static PyObject* cpp_num_vect_to_py_float_list(arbi_array<num> x){
     int size = x.size(0);
     PyObject* pX = PyList_New(size);
     for(int i = 0; i < size; i++){
@@ -162,17 +161,18 @@ class cpp_caller{
 
 
   // converts python list of ints to c++ array of ints
-  static arbi_array<int> py_ints_list_to_cpp_ints_vect(PyObject* pList){
+  static arbi_array<int> py_int_list_to_cpp_int_vect(PyObject* pList, bool decref = false){
     int len = PyList_Size(pList);
     arbi_array<int> result(1, len);
     for(int i = 0; i < len; i++){
       result(i) = PyInt_AsLong(PyList_GetItem(pList, i));
     }
+    if(decref) Py_DECREF(pList);
     return result;
   }
 
   // convert c++ array of nums to python list of floats
-  static PyObject* cpp_ints_vect_to_py_ints_list(arbi_array<int> x){
+  static PyObject* cpp_int_vect_to_py_int_list(arbi_array<int> x){
     int size = x.size(0);
     PyObject* pX = PyList_New(size);
     for(int i = 0; i < size; i++){
@@ -182,12 +182,13 @@ class cpp_caller{
   }
 
   // convert python float list to c++ list of strings
-  static arbi_array<string> py_string_list_to_cpp_string_vect(PyObject* pList){
+  static arbi_array<string> py_string_list_to_cpp_string_vect(PyObject* pList, bool decref = false){
     int len = PyList_Size(pList);
     arbi_array<string> result(1, len);
     for(int i = 0; i < len; i++){
-      result(i) = cpp_caller::PyString_to_CPPString(PyList_GetItem(pList, i));
+      result(i) = cpp_caller::CPPString_From_PyString(PyList_GetItem(pList, i));
     }
+    if(decref) Py_DECREF(pList);
     return result;
   }
 
@@ -201,22 +202,38 @@ class cpp_caller{
     return pList;
   }
 
+  // prints a python object
+  static void py_print(PyObject* pObj){
+    PyObject* pFunc = cpp_caller::get_module_PyObject(string("new_new_objects"), string("print_stuff"));
+    cout<<"                        OHOHOHOHO"<<endl;
+    PyObject_Print(pObj, stdout, 0);
+    cout<<"                        8989898989"<<endl;
+    PyObject_Print(pFunc, stdout, 0);
+    PyObject* pResult = PyObject_CallFunctionObjArgs(pFunc, pObj, NULL);
+    Py_DECREF(pResult);
+    //Py_DECREF(pFunc);
+  }
+
   // convert python mat of strings to c++ mat of strings
-  static arbi_array<string> py_string_mat_to_cpp_string(PyObject* pMat){
+  static arbi_array<string> py_string_mat_to_cpp_string(PyObject* pMat, bool decref = false){
     int size0 = PyList_Size(pMat);
-    int size1 = PyList_Size(PyList_GetItem(pMat, 0));
-    arbi_array<string> x(2, size0, size1);
-    for(int i = 0; i < size0; i++){
-      PyObject* pRow = PyList_GetItem(pMat, i);
+    cout<<"inside string mat to cpp mat"<<endl;
+    cpp_caller::py_print(pMat);
+    PyObject* pRow = PyList_GetItem(pMat, 0);
+    int size1 = PyList_Size(pRow);
+    arbi_array<string> xx(2, size0, size1);
+    for(int a = 0; a < size0; a++){
+      PyObject* pRow = PyList_GetItem(pMat, a);
       for(int j = 0; j < size1; j++){
-	x(i,j) = PyFloat_AsDouble(PyList_GetItem(pRow, j));
+	xx(a,j) = CPPString_From_PyString(PyList_GetItem(pRow, j));
       }
     }
-    return x;
+    if(decref) Py_DECREF(pMat);
+    return xx;
   }
 
   // convert c++ mat of strings to python mat of strings
-  static PyObject* CPPString_mat_to_python_mat(arbi_array<string> x){
+  static PyObject* CPPString_mat_to_py_string_mat(arbi_array<string> x){
     PyObject* pMat = PyList_New(x.size(0));
     for(int i = 0; i < x.size(0); i++){
       PyObject* pVect = PyList_New(x.size(1));
@@ -229,37 +246,55 @@ class cpp_caller{
   }
 
   // convert python float matrix(list of lists) to c++ matrix of nums
-  static arbi_array<num> py_float_mat_to_cpp_nums_mat(PyObject* pMat){
+  static arbi_array<num> py_float_mat_to_cpp_num_mat(PyObject* pMat, bool decref = false){
     // get dimensions of mat
     int height = PyList_Size(pMat);
     int width = PyList_Size(PyList_GetItem(pMat, 0));
     arbi_array<num> x(2, height, width);
+    PyObject* pTemp;
     for(int i = 0; i < height; i++){
       for(int j = 0; j < width; j++){
-	x(i,j) = PyList_GetItem(PyList_GetItem(pMat, i), j);
+	 pTemp = PyList_GetItem(PyList_GetItem(pMat, i), j);
+	 x(i,j) = PyFloat_AsDouble(pTemp);
+	 //Py_DECREF(pTemp);
       }
     }
+    if(decref) Py_DECREF(pMat);
     return x;
   }
 
+
   // convert c++ matrix of nums to python matrix(list of lists) of floats
-  static PyObject* cpp_nums_mat_to_py_float_mat(arbi_array<num> x){
+  static PyObject* cpp_int_mat_to_py_int_mat(arbi_array<num> x){
     PyObject* pX = PyList_New(x.size(0));
     for(int i = 0; i < x.size(0); i++){
       PyObject* pY = PyList_New(x.size(1));
       for(int j = 0; j < x.size(1); j++){
-	PyList_SetItem(pY, j, PyFloat_FromDouble(x(i,j)));
+	PyList_SetItem(pY, j, PyInt_FromLong(x(i,j)));
       }
       PyList_SetItem(pX, i, pY);
     }
     return pX;
+  }  
+
+
+  static arbi_array<int> py_int_mat_to_cpp_int_mat(PyObject* pMat, bool decref = false){
+    // get dimensions of mat
+    int height = PyList_Size(pMat);
+    int width = PyList_Size(PyList_GetItem(pMat, 0));
+    arbi_array<int> x(2, height, width);
+    PyObject* pTemp;
+    for(int i = 0; i < height; i++){
+      for(int j = 0; j < width; j++){
+	 pTemp = PyList_GetItem(PyList_GetItem(pMat, i), j);
+	 x(i,j) = PyInt_AsLong(pTemp);
+	 //Py_DECREF(pTemp);
+      }
+    }
+    if(decref) Py_DECREF(pMat);
+    return x;
   }
 
-  // converts python string to c++ string
-  static string CPPString_From_PyString(PyObject* pStr){
-    char* x = PyString_AsString(pStr);
-    return string(x);
-  }
   
   // returns new reference to python string
   static PyObject* PyString_FromCPPString(string s){
@@ -271,6 +306,16 @@ class cpp_caller{
     return pString;
   }
   
+
+  // converts python string to c++ string
+  static string CPPString_From_PyString(PyObject* pStr){
+    cout<<"2222"<<endl;
+    PyObject_Print(pStr, stdout, 0);
+    cout<<"3333"<<endl;
+    return string(PyString_AsString(pStr));
+  }
+  
+
 };
 
 class cached_obj_getter: public cpp_caller{
@@ -279,22 +324,35 @@ class cached_obj_getter: public cpp_caller{
   // takes in param object that is already set and calls the specified wrapper_instance 
     static PyObject* call_wrapper(string wrapper_module, string wrapper_instance_name, PyObject* pParams, bool recalculate, bool to_pickle, bool to_filelize){
 
+
+
     // convert the bools to python bools
     PyObject* pRecalculate;
     PyObject* pTo_Pickle;
     PyObject* pTo_Filelize;
+
+    py_print(pParams);
     if(recalculate){ pRecalculate = Py_True;} else{ pRecalculate = Py_False;}
-    if(pTo_Pickle){ pTo_Pickle = Py_True;} else{ pTo_Pickle = Py_False;}
-    if(pTo_Filelize){ pTo_Filelize = Py_True;} else{ pTo_Filelize = Py_False;}
+    if(to_pickle){ pTo_Pickle = Py_True;} else{ pTo_Pickle = Py_False;}
+    if(to_filelize){ pTo_Filelize = Py_True;} else{ pTo_Filelize = Py_False;}
 
     // get the wrapper instance
-    PyObject* pWrapperInstance = get_module_PyObject(wrapper_module, obj_name);
+    PyObject* pWrapperInstance = get_module_PyObject(wrapper_module, wrapper_instance_name);
 
     // get method name
     PyObject* pMethodName = PyString_FromCPPString(string("constructor"));
+    py_print(pWrapperInstance);
+    py_print(pMethodName);
 
     // call method
-    PyObject* pResult = PyObject_CallMethodObjArgs(pWrapperInstance, pMethodName, pParams, pRecalculate, pTo_Pickle, pTo_Filelize);
+    PyObject* pResult = PyObject_CallMethodObjArgs(pWrapperInstance, pMethodName, pParams, pRecalculate, pTo_Pickle, pTo_Filelize, NULL);
+    py_print(pResult);
+    PyObject* pVal = PyTuple_GetItem(pResult, 2);
+    Py_INCREF(pVal);
+    Py_DECREF(pResult);
+    cout<<"                inside call_wrapper"<<endl;
+    py_print(pVal);
+    return pVal;
   }
 
   static PyObject* _get(string wrapper_name, arbi_array<string> param_names, arbi_array<void*> values, arbi_array<int> types){
@@ -303,18 +361,21 @@ class cached_obj_getter: public cpp_caller{
     // increment pWrapper ref count to make it seem like a new reference.  will feed
     Py_INCREF(pWrapper);
     
-    int num_params = param_names.size(0);
-    for(int i = 0; i < num_params; i++){
-      set_param(pParams, param_names(i), values(i), types(i));
-    }
     //
     
     
     // make param object out of the dict.  first make argument list
+    PyObject* pParamDict = PyDict_New();
     PyObject* pParamConstructorArgs = PyTuple_New(1); // new
     PyTuple_SetItem(pParamConstructorArgs, 0, pParamDict); // reference to pParamDict stolen by pParamConstructorArgs
     PyObject* pParams = call_PyFunc(string("objects"), string("param"), pParamConstructorArgs);
     Py_DECREF(pParamConstructorArgs);
+
+
+    int num_params = param_names.size(0);
+    for(int i = 0; i < num_params; i++){
+      set_param(pParams, param_names(i), values(i), types(i));
+    }
     
     // make tuple of arguments
     PyObject* pArgs = PyTuple_New(2);
@@ -322,8 +383,14 @@ class cached_obj_getter: public cpp_caller{
     PyTuple_SetItem(pArgs, 1, pParams);
     PyObject* pResult = call_PyFunc(string("global_stuff"), string("get_object"), pArgs);
     Py_DECREF(pArgs);
-    
-    return pResult;
+
+    // pResult is a tuple of 3 things, but only want the first
+    PyObject* pVal = PyTuple_GetItem(pResult, 2);
+    Py_INCREF(pVal);
+    Py_DECREF(pResult);
+    cout<<"                              OOOOOOOOOOOOOOOOOOOOOOOO"<<endl;
+    py_print(pVal);
+    return pVal;
   }
 };
 
@@ -335,19 +402,19 @@ class crf_info_getter: public cached_obj_getter{
 
     string wrapper_name = string("pdb_chain_data_obj_wrapper");
       
-    int num_param = 2;
+    int num_params = 2;
 
-    arbi_array<string> pdb_names(1, num_params);
-    arbi_array<<void*> values(1, num_params);
+    arbi_array<string> param_names(1, num_params);
+    arbi_array<void*> values(1, num_params);
     arbi_array<int> types(1, num_params);
 
     param_names(0) = string("pdb_name");
-    values(0) = pdb_name;
-    types(0) = cpp_caller::STRING_TYPE;
+    values(0) = &pdb_name;
+    types(0) = globals::STRING_TYPE;
 
     param_names(1) = string("chain_letter");
-    values(1) = chain_letter;
-    types(0) = cpp_caller::STRING_TYPE;
+    values(1) = &chain_letter;
+    types(0) = globals::STRING_TYPE;
 
     PyObject* pResult = _get(wrapper_name, param_names, values, types);
 
@@ -358,10 +425,10 @@ class crf_info_getter: public cached_obj_getter{
     PyObject* pTrue_States = PyTuple_GetItem(pResult, 3); // borrowed reference
     PyObject* pNum_Nodes = PyTuple_GetItem(pResult, 4); // borrowed reference
     PyObject* pNum_Edges = PyTuple_GetItem(pResult, 5); // borrowed reference
-    node_features = py_list_to_cpp_floats(pNode_Features);
-    edge_features = py_list_to_cpp_floats(pEdge_Features);
-    edges = py_list_to_cpp_int(pEdge_List);
-    true_states = py_list_to_cpp_int(pTrue_States);
+    node_features = py_float_list_to_cpp_num_vect(pNode_Features);
+    edge_features = py_float_list_to_cpp_num_vect(pEdge_Features);
+    edges = py_int_list_to_cpp_int_vect(pEdge_List);
+    true_states = py_int_list_to_cpp_int_vect(pTrue_States);
     num_nodes = PyInt_AsLong(pNum_Nodes);
     num_edges = PyInt_AsLong(pNum_Edges);
 
@@ -416,46 +483,46 @@ class experiment_results_file_getter: public cached_obj_getter{
  public:
   static void get(arbi_array<num> scores, arbi_array<int> sizes, arbi_array<string> pdb_names, arbi_array<string> chain_letters){
     // convert stuff to write to PyObjects and add to params
-    cpp_caller::set_param(globals::pParams, string("scores"), &scores, cpp_caller::NUM_VECT);
-    cpp_caller::set_param(globals::pParams, string("sizes"), &sizes, cpp_caller::INT_VECT);
-    cpp_caller::set_param(globals::pParams, string("pdb_names"), &pdb_names, cpp_caller::STRING_VECT);
-    cpp_caller::set_param(globals::pParams, string("chain_letters"), &chain_letters, cpp_caller::STRING_VECT);
-    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_experiment_results_file_w"), globals::pParams, True, True, True);
+    cpp_caller::set_param(globals::pParams, string("scores"), &scores, globals::NUM_VECT);
+    cpp_caller::set_param(globals::pParams, string("sizes"), &sizes, globals::INT_VECT);
+    cpp_caller::set_param(globals::pParams, string("pdb_names"), &pdb_names, globals::STRING_VECT);
+    cpp_caller::set_param(globals::pParams, string("chain_letters"), &chain_letters, globals::STRING_VECT);
+    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_experiment_results_file_w"), globals::pParams, true, true, true);
     Py_DECREF(pResults);
   }
-}
+};
 
 class roc_curve_plot_file_getter: public cached_obj_getter{
  public:
   static void get(){
-    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_roc_curve_plot_file_w"), globals::pParams, True, False, False);
+    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_roc_curve_plot_file_w"), globals::pParams, true, false, false);
     Py_DECREF(pResults);
   }
-}
+};
 
-class node_features_obj_getter:: public cached_obj_getter{
+class node_features_obj_getter: public cached_obj_getter{
  public:
   static arbi_array<num> get(string pdb_name, string chain_letter, bool recalculate=false){
-    cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name);
-    cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter);
-    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_node_features_obj_w"), globals::pParams, recalculate, True, True);
+    cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name, globals::STRING_TYPE);
+    cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter, globals::STRING_TYPE);
+    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_node_features_obj_w"), globals::pParams, recalculate, true, true);
     // convert results to arbi_array
-    arbi_array<num> results = cpp_caller::py_float_mat_to_cpp_num_mat(pResult);
+    arbi_array<num> results = cpp_caller::py_float_mat_to_cpp_num_mat(pResults);
     Py_DECREF(pResults);
   }
-}
+};
 
-class edge_features_obj_getter:: public cached_obj_getter{
+class edge_features_obj_getter: public cached_obj_getter{
  public:
   static arbi_array<num> get(string pdb_name, string chain_letter, bool recalculate=false){
-    cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name);
-    cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter);
-    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_edge_features_obj_w"), globals::pParams, recalculate, True, True);
+    cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name, globals::STRING_TYPE);
+    cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter, globals::STRING_TYPE);
+    PyObject* pResults = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_edge_features_obj_w"), globals::pParams, recalculate, true, true);
     // convert results to arbi_array
-    arbi_array<num> results = cpp_caller::py_float_mat_to_cpp_num_mat(pResult);
+    arbi_array<num> results = cpp_caller::py_float_mat_to_cpp_num_mat(pResults);
     Py_DECREF(pResults);
   }
-}
+};
 
   
   
@@ -464,7 +531,7 @@ class edge_features_obj_getter:: public cached_obj_getter{
 #endif
 
 
-"""
+/*
 
 static void add_string_to_params(PyObject* pParams, string param_name, string param_val){
   PyObject *pParamName, *pParamVal;
@@ -522,4 +589,4 @@ static void get(string pdb_name, string chain_letter, int aa, arbi_array<int>& p
   Py_DECREF(pResult);
 }  
 
-"""
+*/

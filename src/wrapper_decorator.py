@@ -21,27 +21,28 @@ def dec(f):
                 temp[key] = params.get_param(key)
         return param(temp)
 
-    def get_all_keys(self, params):
-        return self.used_keys_cache.get().union(self.temp_dependents_keys) - self.temp_new_param_keys
+    def get_all_keys(self, params, recalculate):
+        return self.used_keys_cache.get(recalculate).union(self.temp_dependents_keys) - self.temp_new_param_keys
 
     def get_objects_key(self, params, all_keys):
         return param.restriction(params, all_keys)
 
     def cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize):
         object = f(self, params, recalculate, to_pickle, to_filelize)
-        self.used_keys_cache.set(self.temp_used_keys, to_pickle)
-        all_keys_key = get_all_keys_key(self, params, self.used_keys_cache.get())
-        all_keys = get_all_keys(self, params)
+        # always pickle used_keys and all_keys
+        self.used_keys_cache.set(self.temp_used_keys, True)
+        all_keys_key = get_all_keys_key(self, params, self.used_keys_cache.get(recalculate))
+        all_keys = get_all_keys(self, params, recalculate)
         self.temp_dependents_keys = set()
-        self.all_keys_cache.set(all_keys_key, all_keys, to_pickle)
+        self.all_keys_cache.set(all_keys_key, all_keys, True)
         object_key = get_objects_key(self, params, all_keys)
         object = self.cache.set(object_key, object, to_pickle, params, to_filelize)
-        return self.used_keys_cache.get(), all_keys, object
+        return self.used_keys_cache.get(recalculate), all_keys, object
     
     def h(self, params, recalculate, to_pickle, to_filelize = False):
-        #pdb.set_trace()
+#        pdb.set_trace()
         if self.used_keys_cache.has(recalculate):
-            used_keys = self.used_keys_cache.get()
+            used_keys = self.used_keys_cache.get(recalculate)
             all_keys_key = get_all_keys_key(self, params, used_keys)
             if self.all_keys_cache.has(all_keys_key, recalculate):
                 all_keys = self.all_keys_cache.get(all_keys_key)

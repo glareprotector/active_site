@@ -76,7 +76,7 @@ class ones_fxn_w(obj_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False):
-        return 1
+        return [1]
 
 the_ones_fxn_w = ones_fxn_w()
 
@@ -87,4 +87,4 @@ dict = {'pdb_name':'1asy', 'chain_letter':'A', 'edge_feature_list':[the_ones_fxn
 
 params = param(dict)
 #print 'about to call node_features constructor'
-used_keys, all_keys, node_features  = objects.the_node_features_obj_w.constructor(params, False, True, True)
+#used_keys, all_keys, node_features  = objects.the_node_features_obj_w.constructor(params, True, True, True)

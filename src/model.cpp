@@ -21,8 +21,12 @@ sample model::read_sample(string folder_name){
 
   #ifdef PARAM
   // keep for now only bc sample for now takes these in as input
-  string pdb_name = cpp_caller::py_string_to_CPPString(cpp_caller::get_param(globals::pParams, string("pdb_name")));
-  string chain_letter = cpp_caller::py_string_to_CPPString(cpp_caller::get_param(globals::pParams, string("chain_letter")));
+  string pdb_name = cpp_caller::CPPString_From_PyString(cpp_caller::get_param(globals::pParams, string("pdb_name")));
+  string chain_letter = cpp_caller::CPPString_From_PyString(cpp_caller::get_param(globals::pParams, string("chain_letter")));
+
+  PyObject* pNodeFeatures = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_node_features_obj_w"), globals::pParams, false, true, true);
+  cpp_caller::py_print(pNodeFeatures);
+  arbi_array<num> node_features2 = cpp_caller::py_float_mat_to_cpp_num_mat(pNodeFeatures, true);
 
 
   #else
@@ -31,15 +35,23 @@ sample model::read_sample(string folder_name){
   string chain_letter = helpers::split_string(pdb_string, '_', -1, 0);
   #endif
 
-  arbi_array<int> info = read_vect_to_int(info_file, 2, ' ');
-  int num_nodes = info(0);
-  int num_edges = info(1);
-  
+  //arbi_array<int> info = read_vect_to_int(info_file, 2, ' ');
+  //int num_nodes = info(0);
+  //int num_edges = info(1);
+  int xasdf;
   #ifdef PARAM
+
+  bool recalculate = false;
   arbi_array<num> node_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_node_features_obj_w"), globals::pParams, recalculate, true, true), true);
   arbi_array<num> edge_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_edge_features_obj_w"), globals::pParams, recalculate, true, true), true);  
   arbi_array<int> true_states = cpp_caller::py_int_list_to_cpp_int_vect(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_true_states_obj_w"), globals::pParams, recalculate, true, true), true);
-  arbi_array<int> edge_list = cpp_caller::py_int_mat_to_cpp_int_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_edge_list_obj_w"), globals::pParams, recalculate, true, true), true);
+  arbi_array<int> edge_list = cpp_caller::py_int_mat_to_cpp_int_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_pdb_chain_edge_list_obj_w"), globals::pParams, recalculate, true, true), true);
+
+  cout<<node_features<<endl;
+  cout<<edge_list<<endl;
+  cout<<edge_features<<endl;
+  cout<<true_states<<endl;
+ 
 
   #else
   arbi_array<num> node_features_transposed = read_mat_to_num(node_feature_file, this->num_node_features, num_nodes);
@@ -57,8 +69,8 @@ sample model::read_sample(string folder_name){
   arbi_array<int> edges = read_mat_to_int(edge_file, num_edges, 2);
 
   #endif
-
-  return sample(this, node_features, edge_features, edges, true_states, folder_name, pdb_name, chain_letter);
+  
+  return sample(this, node_features, edge_features, edge_list, true_states, folder_name, pdb_name, chain_letter);
 }
 
 void model::normalize(){
@@ -143,6 +155,7 @@ void model::report(arbi_array<num> theta){
   // sample_labels will be of length (4+1) * num_testing, with the 1 for the null characters, 4 for the length of sample_names
   char* sample_pdb_names;
   char* sample_chain_letters;
+  int* sample_lengths;
 
   // need to retrieve the length of sample_pdb_names and sample_chain_letters later
   int num_testing_master;
@@ -201,7 +214,7 @@ void model::report(arbi_array<num> theta){
   int sample_pdb_names_length = num_testing * 5;
   sample_pdb_names = new char[sample_pdb_names_length];
   int sample_chain_letters_length = num_testing * 2;
-  sample_chain_letters_length = new char[sample_chain_letters_length];
+  sample_chain_letters = new char[sample_chain_letters_length];
   sample_lengths = new int[num_testing];
   num_testing_master = num_testing;
 
@@ -222,8 +235,8 @@ void model::report(arbi_array<num> theta){
   }
   // likewise, each node gets a char of length 5 * num_testing for pdb_names, char of length 2 * num_testing for chain_letters
   for(int i = 0; i < num_testing; i++){
-    strcpy(sample_pdb_names[i*5], data(testing_indicies(i)).pdb_name.c_str());
-    strcpy(sample_chain_letters[i*2], data(testing_indicies(i)).chain_letter.c_str());
+    strcpy(sample_pdb_names + (i*5), data(testing_indicies(i)).pdb_name.c_str());
+    strcpy(sample_chain_letters + (i*2), data(testing_indicies(i)).chain_letter.c_str());
   }
     
      
@@ -279,8 +292,8 @@ void model::report(arbi_array<num> theta){
   arbi_array<string> parsed_chain_letters(1, num_testing_master);
   if(proc_id == 0){
     for(int i = 0; i < num_testing_master; i++){
-      parsed_pdb_names(i) = string(sample_pdb_names[5 * i]);
-      parsed_chain_letters(i) = string(sample_chain_letters[2 * i]);
+      parsed_pdb_names(i) = string(sample_pdb_names + (5*i));
+      parsed_chain_letters(i) = string(sample_chain_letters + (2*i));
     }
   }
 
@@ -312,7 +325,7 @@ void model::report(arbi_array<num> theta){
       sample_lengths_ar(i) = sample_lengths[i];
     }
     
-
+  }
 }
 
 void model::assign(int _num_folds, int _which_fold){
@@ -347,9 +360,15 @@ void model::load_data(arbi_array<string> folder_names){
   #ifdef SERIAL
   
   #ifdef PARAM
-  arbi_array<string> data_list = cpp_caller::py_string_mat_to_CPPString_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_formatted_data_list_obj_w"), globals::pParams, recalculate, false, true), true);
-  int num_samples = data_list.size(0);
+  bool recalculate = true;
 
+  PyObject* pASDF = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_formatted_data_list_obj_w"), globals::pParams, recalculate, false, true);
+  cpp_caller::py_print(pASDF);
+  arbi_array<string> data_list = cpp_caller::py_string_mat_to_cpp_string(pASDF, true);
+  int num_samples = data_list.size(0);
+  cpp_caller::py_print(pASDF);
+  cout<<data_list<<endl;
+  cout<<"                                      0000001111"<<endl;
 
   #else
 
@@ -363,8 +382,12 @@ void model::load_data(arbi_array<string> folder_names){
     try{
 
       #ifdef PARAM
-      cpp_caller::set_param(globals::pParams, string("pdb_name"), &data_list(i,0), cpp_caller::STRING_TYPE);
-      cpp_caller::set_param(globals::pParams, string("chain_letter"), &data_list(i,1), cpp_caller::STRING_TYPE);
+      cout<<data_list(i,0)<<endl;
+      cout<<data_list(i,1)<<endl;
+      string temp1 = data_list(i,0);
+      string temp2 = data_list(i,1);
+      cpp_caller::set_param(globals::pParams, string("pdb_name"), &temp1, globals::STRING_TYPE);
+      cpp_caller::set_param(globals::pParams, string("chain_letter"), &temp2, globals::STRING_TYPE);
       #endif
 
       sample s = read_sample(folder_names(i));
@@ -496,10 +519,12 @@ class My_Minimizer: public Minimizer{
   model* p_model;
   int which_obj;
 
-  My_Minimizer(model* _p_model): Minimizer(false) {p_model = _p_model;};
+  My_Minimizer(model* _p_model): Minimizer(false) {p_model = _p_model;}
 
-  void ComputeGradient(vector<double>& gradient, const vector<double>& x, int which_obj){
+  virtual void ComputeGradient(vector<double>& gradient, const vector<double>& x){
     
+    int which_obj = globals::which_obj;
+
     //assert(false);
 
     //cout<<"gradient: "<<which_obj<<endl;
@@ -553,7 +578,7 @@ class My_Minimizer: public Minimizer{
 
   }
 
-  double ComputeFunction(const vector<double>& x, int which_obj){
+  virtual double ComputeFunction(const vector<double>& x){
     //cout<<"COMPUTE FUNCTION"<<endl;
     //cout<<"fxn: "<<which_obj<<endl;
     #ifdef SERIAL
@@ -566,6 +591,8 @@ class My_Minimizer: public Minimizer{
     //p_model->set_theta(theta);
     
     //cout<<"222222222"<<theta<<endl;
+    int which_obj = globals::which_obj;
+
     double ans = p_model->get_L(which_obj, theta);
     assert(isfinite(ans));
     return ans;
@@ -616,25 +643,33 @@ int main(int argc, char** argv){
 
   globals::init(argc, argv);
   Py_Initialize();
+
   PyObject* pSysPath= cpp_caller::_get_module_PyObject(string("sys"), string("path"));
-  ;
+  
   for(int i = 0; i < PyList_Size(pSysPath); i++){
     cpp_caller::added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
   }
 
 
-  // insert params into the python environment
-  globals::pParams = cpp_caller:get_new_empty_param();
+  // insert params into the python environmenta
+  /*globals::pParams = cpp_caller::get_new_empty_param();
   int dist_cut_off = 5;
-  cpp_caller::set_param(globals::pParams, string("dist_cut_off"), &dist_cut_off, cpp_caller::INT_TYPE);
+  cpp_caller::set_param(globals::pParams, string("dist_cut_off"), &dist_cut_off, globals::INT_TYPE);
   num evalue = 1e-10;
-  cpp_caller::set_param(globals::pParams, string("evalue"), &evalue, cpp_caller::NUM_TYPE);
-  string data_list_file("../data/catres_six.pdb_list");
-  cpp_caller::set_param(globals::pParams, string("data_list_file"), &pdb_list_file, cpp_caller::STRING_MAT);
+  cpp_caller::set_param(globals::pParams, string("evalue"), &evalue, globals::NUM_TYPE);
+  string data_list_file("catres_six.pdb_list");
+  cpp_caller::set_param(globals::pParams, string("data_list_file"), &data_list_file, globals::STRING_TYPE);
+  */
+
+  // get globals::pParams from new_new_objects
+  globals::pParams = cpp_caller::get_module_PyObject(string("new_new_objects"), string("the_params"));
+  
+
+
 
   // create the experiment info file.  the experiment output results logically depend on this info file, since model reads info, creates model and then output.
   // result is a file handle which we don't do anything with, so decref it right away
-  PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("experiment_info_file"), globals.pParams, true, false, false);
+  PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("the_experiment_info_file_w"), globals::pParams, true, false, false);
   Py_DECREF(pResult);
 
   

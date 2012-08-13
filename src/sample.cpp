@@ -451,7 +451,7 @@ void sample::get_dL_dMu_nodewise(arbi_array<num> node_marginals, arbi_array<num>
 }
 
 num sample::get_L_expected_distance(arbi_array<num> theta){
-
+  /*
   num loss = 0;
   arbi_array<num> node_marginals;
   arbi_array<num> edge_marginals;
@@ -480,7 +480,8 @@ num sample::get_L_expected_distance(arbi_array<num> theta){
     //cout<<exp_val<<" "<<closest_site_dist<<endl;
     loss += smooth_f(fabs(exp_val - closest_site_dist));
   }
-  return loss;
+  return loss;*/
+  return 2.0;
 }
 
 num sample::d_smooth_f(num x){
@@ -489,7 +490,7 @@ num sample::d_smooth_f(num x){
 }
       
 void sample::get_dL_dMu_expected_distance(arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num>& dL_dNode_Mu, arbi_array<num>& dL_dEdge_Mu){
-
+  /*
   assert(p_model->num_states == 2);
   dL_dNode_Mu = arbi_array<num>(2, num_nodes, 2);
   dL_dNode_Mu.fill(0);
@@ -530,7 +531,8 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num> node_marginals, arbi_a
   // loss function doesn't depend on edge marginals, so dL_Edge_dMu should be zeros
   dL_dEdge_Mu = arbi_array<num>(3, num_edges, 2, 2);
   dL_dEdge_Mu.fill(0);
-
+  */
+  int x;
 }
       
 	

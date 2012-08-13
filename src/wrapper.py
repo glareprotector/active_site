@@ -1,9 +1,9 @@
 from param import param
 
 import pdb, os, subprocess, constants, pickle
-from global_stuff import print_stuff_dec
+from global_stuff import print_stuff_dec, write_mat, write_vect
 
-from caches import *
+import caches
 from wrapper_decorator import *
 
 # note for all caches: recalculate specifies whether you want to use the files/pickles that are present when cache is created
@@ -14,8 +14,8 @@ from wrapper_decorator import *
 
 class wrapper(object):
 
-    #def __repr__(self):
-    #    return self.__class__.__name__
+    def __repr__(self):
+        return self.__class__.__name__
 
     def get_holding_location(self):
         return constants.BIN_FOLDER + str(id(self))
@@ -30,8 +30,8 @@ class wrapper(object):
         return self.get_wrapper_name() + str(object_key)
     
     def basic_init(self):
-        self.used_keys_cache = used_keys_obj_cache(self)
-        self.all_keys_cache = all_keys_obj_cache(self)
+        self.used_keys_cache = caches.used_keys_obj_cache(self)
+        self.all_keys_cache = caches.all_keys_obj_cache(self)
         self.temp_used_keys = set()
         self.temp_dependents_keys = set()
         self.temp_new_param_keys = set()
@@ -83,13 +83,17 @@ class obj_wrapper(wrapper):
 
     def __init__(self):
         self.basic_init()
-        self.cache = object_cache_for_wrapper(self)
+        self.cache = caches.object_cache_for_wrapper(self)
 
 class mat_obj_wrapper(obj_wrapper):
     
     def get_file_dumper(self):
         return generic_mat_file_dumper_wrapper(self)
 
+class vect_obj_wrapper(obj_wrapper):
+
+    def get_file_dumper(self):
+        return generic_vect_file_dumper_wrapper(self)
 
 class file_wrapper(wrapper):
 
@@ -98,7 +102,7 @@ class file_wrapper(wrapper):
 
     def __init__(self):
         self.basic_init()
-        self.cache = file_cache_for_wrapper(self)
+        self.cache = caches.file_cache_for_wrapper(self)
         
     @print_stuff_dec
     def get_holding_folder(self):
@@ -112,7 +116,7 @@ class generic_dumper_wrapper(file_wrapper):
     def __init__(self, source_wrapper):
         self.basic_init()
         self.source_wrapper = source_wrapper # source makes the object
-        self.cache = file_cache_for_wrapper(self)
+        self.cache = caches.file_cache_for_wrapper(self)
 
     def get_wrapper_name(self):
         return self.__class__.__name__ + '-' + self.source_wrapper.get_wrapper_name()
@@ -140,7 +144,13 @@ class generic_mat_file_dumper_wrapper(generic_dumper_wrapper):
 
     # do i have to create the folder first?
     def dump_object(self, object):
-        global_stuff.write_mat(object, self.get_holding_location())
+        write_mat(object, self.get_holding_location())
+
+class generic_vect_file_dumper_wrapper(generic_dumper_wrapper):
+
+    # do i have to create the folder first?
+    def dump_object(self, object):
+        write_mat(object, self.get_holding_location())
 
     
 
