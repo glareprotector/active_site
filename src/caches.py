@@ -55,10 +55,12 @@ class file_cache_for_wrapper(object):
 # act of caching: putting object into cache's dictionary
 class object_cache_for_wrapper(object):
 
-    def __init__(self, the_wrapper):
+    def __init__(self, maker, params):
+        self.maker = maker
         self.dump = {}
-        self.the_wrapper = the_wrapper
-        self.pickle_dumper_wrapper = wrapper.generic_pickle_dumper_wrapper(self.the_wrapper)
+        self.the_wrapper = maker.get_param(params, "source_instance")
+        self.pickle_dumper_wrapper = maker.get_var_or_file(wc, params, True, False, False)
+        #self.pickle_dumper_wrapper = wrapper.generic_pickle_dumper_wrapper(self.the_wrapper)
         self.file_dumper_wrapper = self.the_wrapper.get_file_dumper()
 
 
@@ -104,9 +106,9 @@ class object_cache_for_wrapper(object):
 # is like a regular objects cache, but pickles entire dictionary instead of individual items
 class all_keys_obj_cache(object):
 
-    def __init__(self, the_wrapper):
+    def __init__(self, maker, params):
         self.dump = {}
-        self.the_wrapper = the_wrapper
+        self.the_wrapper = maker.get_param(param, "source_instance")
         self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + the_wrapper.__class__.__name__ + '.pickle'
         self.existing_dump = {}
         if os.path.isfile(self.pickle_location):
@@ -116,6 +118,13 @@ class all_keys_obj_cache(object):
             self.existing_dump = {}
         
         self.pickles_created = set()
+
+    def get_keys(self, recalculate):
+        if recalculate:
+            return set(self.dump.keys()).union(set(self.existing_dump))
+        else:
+            return self.dump.keys()
+            
 
     def has(self, key, recalculate):
         if key in self.dump:
@@ -137,11 +146,32 @@ class all_keys_obj_cache(object):
         assert False
 
     # if item was pickled this round, don't need to repickle it.  so, keep track of the stuff that has been pickled
-    def set(self, key, val, to_pickle):
+    # if not recalculating, should i pickle existing dump?
+    def set(self, key, val, to_pickle, recalculate):
         self.dump[key] = val
         if to_pickle and key not in self.pickles_created:
-            pickle.dump(self.dump, open(self.pickle_location, 'wb'))
+            if recalculate:
+                pickle.dump(self.dump, open(self.pickle_location, 'wb'))
+            else:
+                set(self.dump.keys()).union(set(self.existing_dump))
             self.pickles_created.add(key)
+
+class index_cache(all_keys_obj_index):
+
+    # for now, decide that if i'm going to index, then i'm also going to pickle.
+    # it's possible that you are caching an object(it wasn't in object cache), but its index is already here
+    def get_and_set_index(key, to_reindex):
+        if self.has(key, to_reindex):
+            return self.get(key)
+        else:
+            cur_keys = self.get_vals(to_reindex)
+            if len(cur_keys) == 0:
+                return 0
+            else:
+                return max(cur_keys) + 1
+            
+        
+        
 
 class used_keys_obj_cache(object):
 

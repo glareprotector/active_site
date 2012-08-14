@@ -14,8 +14,14 @@ from wrapper_decorator import *
 
 class wrapper(object):
 
+    def is_indexed(self):
+        return True
+
+    def makes_index(self):
+        return False
+
     def __repr__(self):
-        return self.__class__.__name__
+        return self.name
 
     def get_holding_location(self):
         return constants.BIN_FOLDER + str(id(self))
@@ -24,28 +30,35 @@ class wrapper(object):
         return constants.BIN_FOLDER
 
     def get_wrapper_name(self):
-        return self.__class__.__name__
+        return self.__repr__()
 
     def get_name(self, object_key):
         return self.get_wrapper_name() + str(object_key)
     
-    def basic_init(self):
-        self.used_keys_cache = caches.used_keys_obj_cache(self)
-        self.all_keys_cache = caches.all_keys_obj_cache(self)
+    def basic_init(self, maker, params):
+        maker.set_param(params, "source_instance", self)
+        self.used_keys_cache = caches.used_keys_obj_cache(self, maker, params)
+        self.all_keys_cache = caches.all_keys_obj_cache(self, maker, params)
         self.temp_used_keys = set()
         self.temp_dependents_keys = set()
         self.temp_new_param_keys = set()
+        if self.makes_index():
+            self.object_key_to_index = index_cache(self, maker, params)
+        self.name = self.__class__.__name__
+        self.maker = maker
+        self.construction_params = params
 
-    def __init__(self):
-        self.basic_init()
+    def __init__(self, maker, params = param({})):
+        self.basic_init(maker, params)
 
     def set_param(self, params, key, val):
         self.temp_new_param_keys.add(key)
         params.set_param(key, val)
         return params
 
-    def get_param(self, params, key):
-        self.temp_used_keys.add(key)
+    def get_param(self, params, key, record = True):
+        if record:
+            self.temp_used_keys.add(key)
         return params.get_param(key)
 
     @print_stuff_dec
@@ -72,6 +85,16 @@ class wrapper(object):
 
     def set(self, object_key, object, to_pickle, params):
         return self.cache.set(object_key, object, to_pickle, params)
+
+class indexing_wrapper(wrapper):
+
+    def makes_index(self):
+        return True
+
+class indexed_wrapper(wrapper):
+
+    def process_index(self, index):
+        self.name = str(index)
 
 class obj_wrapper(wrapper):
 
@@ -110,12 +133,14 @@ class file_wrapper(wrapper):
 
     
 # normal file_wrappers don't have a source, but a dumper does.  dumper's folder should be same as its source
+# what if you have 2 generic dumpers with different sources.  then they're different.  what if same wrapper with 2 different sources? still different.
 class generic_dumper_wrapper(file_wrapper):
 
     # same as regular file wrapper, except that it is initialized with a object_wrapper - the wrapper that created it
-    def __init__(self, source_wrapper):
+    def __init__(self, maker, params):
         self.basic_init()
-        self.source_wrapper = source_wrapper # source makes the object
+        #self.source_wrapper = source_wrapper # source makes the object
+        self.source_wrapper = self.maker.get_param("source_instance")
         self.cache = caches.file_cache_for_wrapper(self)
 
     def get_wrapper_name(self):

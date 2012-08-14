@@ -250,11 +250,13 @@ class experiment_results_obj_w(wrapper.mat_obj_wrapper):
         # node_features can get passed params, because params would have been given to this wrapper which would create model and use them to get node features
         # after getting scores, have wrappers depending on scores that calculate roc, other measures
         # i can't call them arbitrary order, so have to call scores, then other wrappers
+        pdb.set_trace()
         scores = self.get_param(params, 'scores', False)
-        sizes = self.get_param(param, 'sizes', False)
-        pdb_names = self.get_param(param, 'pdb_names', False)
-        chain_letters = self.get_param(param, 'chain_letters', False)
-        num_samples = len(scores)
+        true_states = self.get_param(params, 'true_states', False)
+        sizes = self.get_param(params, 'sizes', False)
+        pdb_names = self.get_param(params, 'pdb_names', False)
+        chain_letters = self.get_param(params, 'chain_letters', False)
+        num_samples = len(pdb_names)
         pos = 0
         mat = []
         # alternate between pdb_names, chain_letter and scores
