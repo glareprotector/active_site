@@ -59,9 +59,11 @@ class object_cache_for_wrapper(object):
         self.maker = maker
         self.dump = {}
         self.the_wrapper = maker.get_param(params, "source_instance")
+        makers.set_param(params, "which_wrapper", wrapper.generic_dumper_wrapper)
+        # this might be called with 
         self.pickle_dumper_wrapper = maker.get_var_or_file(wc, params, True, False, False)
         #self.pickle_dumper_wrapper = wrapper.generic_pickle_dumper_wrapper(self.the_wrapper)
-        self.file_dumper_wrapper = self.the_wrapper.get_file_dumper()
+        self.file_dumper_wrapper = self.the_wrapper.get_file_dumper(maker, params)
 
 
     def has(self, object_key, recalculate):

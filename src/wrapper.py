@@ -6,6 +6,8 @@ from global_stuff import print_stuff_dec, write_mat, write_vect
 import caches
 from wrapper_decorator import *
 
+# since wrappers and caches are objects that can be cached, should record the wrapper that is constructing them.
+
 # note for all caches: recalculate specifies whether you want to use the files/pickles that are present when cache is created
 
 # act of caching: moving file from temporary holding spot to proper folder.  cache structure: file system
@@ -31,41 +33,46 @@ class wrapper(object):
 
     def get_wrapper_name(self):
         return self.__repr__()
-
-    def get_name(self, object_key):
-        return self.get_wrapper_name() + str(object_key)
+    # if the wrapper index stuff, its objects can obtain indicies thru maker->object_key_to_index
+    # in general, the methods i make should have a maker pointer so that params can be accessed thru the maker
+    def get_name(self, object_key, to_reindex = False):
+        if not to_reindex:
+            return self.get_wrapper_name() + str(object_key)
+        else:
+            assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
+            return self.get_wrapper_name() + str(self.maker.object_key_to_index.get(object_key))
     
     def basic_init(self, maker, params):
         maker.set_param(params, "source_instance", self)
         self.used_keys_cache = caches.used_keys_obj_cache(self, maker, params)
         self.all_keys_cache = caches.all_keys_obj_cache(self, maker, params)
-        self.temp_used_keys = set()
-        self.temp_dependents_keys = set()
-        self.temp_new_param_keys = set()
+        self.temp_used_keys = []
+        self.temp_dependents_keys = []
+        self.temp_new_param_keys = []
         if self.makes_index():
             self.object_key_to_index = index_cache(self, maker, params)
         self.name = self.__class__.__name__
         self.maker = maker
-        self.construction_params = params
 
     def __init__(self, maker, params = param({})):
         self.basic_init(maker, params)
 
     def set_param(self, params, key, val):
-        self.temp_new_param_keys.add(key)
+        self.temp_new_param_keys[-1].add(key)
         params.set_param(key, val)
         return params
 
     def get_param(self, params, key, record = True):
         if record:
-            self.temp_used_keys.add(key)
+            self.temp_used_keys[-1].add(key)
         return params.get_param(key)
 
+    # if a wrapper calls itself...
     @print_stuff_dec
     def get_var_or_file(self, wrapper, params, recalculate, to_pickle, to_filelize = False):
         print '                       ', self, wrapper
         used_keys, all_keys, x = wrapper.constructor(params, recalculate, to_pickle, to_filelize)
-        self.temp_dependents_keys  = self.temp_dependents_keys.union(all_keys)
+        self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
         return x
 
     # returns only the object, but after decorating, will return used_keys, all_keys, object
@@ -104,28 +111,28 @@ class obj_wrapper(wrapper):
     def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key) + '.pickle'
 
-    def __init__(self):
-        self.basic_init()
-        self.cache = caches.object_cache_for_wrapper(self)
+    def __init__(self, maker, params):
+        self.basic_init(maker, params)
+        self.cache = caches.object_cache_for_wrapper(maker, params)
 
 class mat_obj_wrapper(obj_wrapper):
     
-    def get_file_dumper(self):
-        return generic_mat_file_dumper_wrapper(self)
+    def get_file_dumper(self, maker, params):
+        return generic_mat_file_dumper_wrapper(maker, params)
 
 class vect_obj_wrapper(obj_wrapper):
 
-    def get_file_dumper(self):
-        return generic_vect_file_dumper_wrapper(self)
+    def get_file_dumper(self, maker, params):
+        return generic_vect_file_dumper_wrapper(maker, params)
 
 class file_wrapper(wrapper):
 
     def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key)
 
-    def __init__(self):
-        self.basic_init()
-        self.cache = caches.file_cache_for_wrapper(self)
+    def __init__(self, maker, params):
+        self.basic_init(maker, params)
+        self.cache = caches.file_cache_for_wrapper(maker, params)
         
     @print_stuff_dec
     def get_holding_folder(self):
@@ -138,10 +145,10 @@ class generic_dumper_wrapper(file_wrapper):
 
     # same as regular file wrapper, except that it is initialized with a object_wrapper - the wrapper that created it
     def __init__(self, maker, params):
-        self.basic_init()
+        self.basic_init(maker, params)
         #self.source_wrapper = source_wrapper # source makes the object
         self.source_wrapper = self.maker.get_param("source_instance")
-        self.cache = caches.file_cache_for_wrapper(self)
+        self.cache = caches.file_cache_for_wrapper(maker, params)
 
     def get_wrapper_name(self):
         return self.__class__.__name__ + '-' + self.source_wrapper.get_wrapper_name()

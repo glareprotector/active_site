@@ -22,13 +22,17 @@ def dec(f):
         return param(temp)
 
     def get_all_keys(self, params, recalculate):
-        return self.used_keys_cache.get(recalculate).union(self.temp_dependents_keys) - self.temp_new_param_keys
+        return self.temp_used_keys[-1].union(self.temp_dependents_keys[-1]) - self.temp_new_param_keys[-1]
 
     def get_objects_key(self, params, all_keys):
         return param.restriction(params, all_keys)
 
     def cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize):
         pdb.set_trace()
+        # add empty sets to the used_keys and dependents keys and set params
+        self.temp_used_keys.append(set())
+        self.temp_dependents_keys.append(set())
+        self.temp_new_param_keys.append(set())
         object = f(self, params, recalculate, to_pickle, to_filelize)
         # always pickle used_keys and all_keys
         self.used_keys_cache.set(self.temp_used_keys, True)
