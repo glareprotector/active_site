@@ -60,4 +60,5 @@ class param(object):
             toReturn.set_param(key, B.get_param(key))
         return toReturn
         
-    
+    def __repr__(self):
+        return self.__str__()

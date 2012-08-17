@@ -12,7 +12,8 @@ FILE_MANAGER_SIZE = 500
 OBJ_MANAGER_SIZE = 500
 MUSCLE_PATH = '/home/fultonw/muscle3.8.31_i86linux64'
 
-
+to_reindex = True
+recalculate = True
 
 the_obj_manager = obj_manager()
 the_file_manager = file_manager()
@@ -29,9 +30,9 @@ fail_file = 'fail_catres.txt'
 def print_stuff_dec(f):
 
     def g(*args, **kwargs):
-        print 'calling ', f.func_name, ' with ', args, kwargs
+        #print 'calling ', f.func_name, ' with ', args, kwargs
         ans = f(*args, **kwargs)
-        print f.func_name, ' returned ', ans
+        #print f.func_name, ' returned ', ans
         return ans
     
     return g

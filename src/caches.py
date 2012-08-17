@@ -2,52 +2,45 @@ import constants
 import os
 import pickle
 import pdb
-import wrapper
+#import wrapper
 import subprocess
+import wrapper
+import global_stuff
 
-from new_features import *
-#import new_features as features
+#from new_features import *
 
+# act of caching: should be putting key, location of file in dictionary, but i don't have that.
 class file_cache_for_wrapper(object):
 
-    # files_created is the equivalent of the dump in the objects_cache
-    def __init__(self, the_wrapper):
-        self.the_wrapper = the_wrapper
+    # files_created is the equivalent of the dump in the objects_cache.
+    def __init__(self, maker, params):
+        self.maker = maker
+        self.the_wrapper = self.maker.get_param(params, "source_instance", old_self=self)
         self.files_created = set()
 
 
     # if we are not trusting the files previously in file system, then we only say a file is there if it was created this round
-    #@print_stuff_dec
     def has(self, object_key, recalculate):
-        #print self,self.the_wrapper
-        #pdb.set_trace()
         if object_key in self.files_created:
             return True
         elif not recalculate:
             if os.path.isfile(self.the_wrapper.get_file_location(object_key)):
                 return True
-
         return False
 
     # get is only called if has was just called and returned true
-    # actually, can also be used for object creation
     def get(self, object_key, recalculate, mode = 'r'):
         self.allocate(object_key)
         return open(self.the_wrapper.get_file_location(object_key), mode)
 
-    # moves object from temporary holding place to where it should be stored permenantly.  makes destination folder if needed. keep track of which files were get'ed in this execution
-    # set is only called right after get is called
-    #@print_stuff_dec
+    # moves object from temporary to permanent location.  makes destination folder if needed. keep track of which files were get'ed in this execution.  set is only called right after get is called
     def set(self, object_key, object, to_pickle, params, to_filelize = None):
-        #pdb.set_trace()
         self.allocate(object_key)
         subprocess.call(['mv', object.name, self.the_wrapper.get_file_location(object_key)])
         self.files_created.add(object_key)
         return open(self.the_wrapper.get_file_location(object_key), 'r')
 
-    # creates folder for object whose type is specified by the wrapper
-    # this step does the prep work allowing the object to be put in the cache, which in this case is the folder in the file system
-    #@print_stuff_dec
+    # creates folder for object whose type is specified by the wrapper. this step does the prep work allowing the object to be put in the cache, which in this case is the folder in the file system
     def allocate(self, object_key):
         if not os.path.exists(self.the_wrapper.get_folder(object_key)):
             os.makedirs(self.the_wrapper.get_folder(object_key))
@@ -55,14 +48,15 @@ class file_cache_for_wrapper(object):
 # act of caching: putting object into cache's dictionary
 class object_cache_for_wrapper(object):
 
+    # wrapper is instance.  set instance if want dumper to use it.
     def __init__(self, maker, params):
         self.maker = maker
         self.dump = {}
-        self.the_wrapper = maker.get_param(params, "source_instance")
-        makers.set_param(params, "which_wrapper", wrapper.generic_dumper_wrapper)
-        # this might be called with 
-        self.pickle_dumper_wrapper = maker.get_var_or_file(wc, params, True, False, False)
-        #self.pickle_dumper_wrapper = wrapper.generic_pickle_dumper_wrapper(self.the_wrapper)
+        self.the_wrapper = self.maker.get_param(params, "source_instance", old_self=self)
+        # it's not possible that the dumper exists already bc that would have required an instance of the_wrapper, which can't exist since we are creating it.  give dumper_wrapper the_wrapper instance.
+        # POSSIBLY PROBLEM AREA
+        #self.maker.set_param(params, "which_wrapper_class", wrapper.generic_pickle_dumper_wrapper)
+        self.pickle_dumper_wrapper = wrapper.generic_pickle_dumper_wrapper(maker, params)
         self.file_dumper_wrapper = self.the_wrapper.get_file_dumper(maker, params)
 
 
@@ -89,16 +83,17 @@ class object_cache_for_wrapper(object):
     # self.pickle_wrapper where constructor makes the pickle.  params would include object_key and object
     #@print_stuff_dec
     def set(self, object_key, object, to_pickle, params, to_filelize = False):
-        print self.the_wrapper
+        #print self.the_wrapper
         #pdb.set_trace()
         self.dump[object_key] = object
         if to_pickle: 
             #pdb.set_trace()
-            temp_f = self.the_wrapper.get_var_or_file(self.pickle_dumper_wrapper, params, True, None, False)
+            # here, already stored reference to a wrapper instance.  so just call it directly.
+            temp_f = self.the_wrapper.old_get_var_or_file(self.pickle_dumper_wrapper, params, True, False, False)
         if to_filelize:
             #pdb.set_trace()
             assert self.file_dumper_wrapper != None
-            temp_f = self.the_wrapper.get_var_or_file(self.file_dumper_wrapper, params, True, None, False)
+            temp_f = self.the_wrapper.old_get_var_or_file(self.file_dumper_wrapper, params, True, False, False)
         return object
 
     # don't have to do anything to put the object in the cache
@@ -110,20 +105,21 @@ class all_keys_obj_cache(object):
 
     def __init__(self, maker, params):
         self.dump = {}
-        self.the_wrapper = maker.get_param(param, "source_instance")
-        self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + the_wrapper.__class__.__name__ + '.pickle'
+        self.the_wrapper = maker.get_param(params, "source_instance", old_self=self)
+        self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + self.the_wrapper.__class__.__name__ + '.pickle'
         self.existing_dump = {}
-        if os.path.isfile(self.pickle_location):
-            print self.pickle_location, self, the_wrapper
+        if global_stuff.recalculate == False and os.path.isfile(self.pickle_location):
+
             self.existing_dump = pickle.load(open(self.pickle_location, 'rb'))
         else:
             self.existing_dump = {}
         
         self.pickles_created = set()
+        self.maker = maker
 
     def get_keys(self, recalculate):
-        if recalculate:
-            return set(self.dump.keys()).union(set(self.existing_dump))
+        if not recalculate:
+            return set(self.dump.keys()).union(set(self.existing_dump.keys()))
         else:
             return self.dump.keys()
             
@@ -155,39 +151,45 @@ class all_keys_obj_cache(object):
             if recalculate:
                 pickle.dump(self.dump, open(self.pickle_location, 'wb'))
             else:
-                set(self.dump.keys()).union(set(self.existing_dump))
+                pickle.dump(self.existing_dump.update(self.dump), open(self.pickle_location, 'wb'))
             self.pickles_created.add(key)
 
-class index_cache(all_keys_obj_index):
+class index_cache(all_keys_obj_cache):
 
     # for now, decide that if i'm going to index, then i'm also going to pickle.
     # it's possible that you are caching an object(it wasn't in object cache), but its index is already here
-    def get_and_set_index(key, to_reindex):
+    def get_and_set_index(self, key, to_reindex = global_stuff.to_reindex):
+        print self.dump
         if self.has(key, to_reindex):
             return self.get(key)
         else:
-            cur_keys = self.get_vals(to_reindex)
+            cur_keys = self.get_keys(to_reindex)
             if len(cur_keys) == 0:
-                return 0
+                
+                new_val = 0
             else:
-                return max(cur_keys) + 1
+                new_val = len(cur_keys) + 1
+            self.set(key, new_val, True, to_reindex)
+            return new_val
             
         
         
 
 class used_keys_obj_cache(object):
 
-    def __init__(self, the_wrapper):
+    def __init__(self, maker, params):
         self.dump = None
         self.val = None
-        self.the_wrapper = the_wrapper
-        self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + the_wrapper.__class__.__name__ + '.pickle'
-
-        if os.path.isfile(self.pickle_location):
+        self.the_wrapper = maker.get_param(params, "source_instance", old_self=self)
+        self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + self.the_wrapper.__class__.__name__ + '.pickle'
+        self.pickle_created = False
+        if global_stuff.recalculate == False and os.path.isfile(self.pickle_location):
             self.dump = pickle.load(open(self.pickle_location, 'rb'))
-            self.pickle_created = True
+            #self.pickle_created = True
         else:
-            self.pickle_created = False
+            #self.pickle_created = False
+            self.dump = None
+        self.maker = maker
 
     # recalculate specifies whether to look at possible pickle file and use it
     def has(self, recalculate):
@@ -197,7 +199,7 @@ class used_keys_obj_cache(object):
             if self.dump != None:
                 return True
         elif self.pickle_created == True:
-            return self.dump
+            assert False
         return False
 
     # recalculate determines whether to look at pickle
@@ -208,11 +210,14 @@ class used_keys_obj_cache(object):
             if self.dump != None:
                 return self.dump
         elif self.pickle_created == True:
+            assert False
             return self.dump
         raise KeyError
 
     def set(self, val, to_pickle):
-        self.dump = val
+        self.val = val
         if to_pickle and not self.pickle_created:
             pickle.dump(val, open(self.pickle_location, 'wb'))
             self.pickle_created = True
+
+import wrapper
