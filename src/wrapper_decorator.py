@@ -5,10 +5,8 @@ import global_stuff
 
 def dec(f):
 
-    def affects_which_wrappers_are_called(self, key, val, set_keys):
+    def affects_which_wrappers_are_called(self, key, val):
         if val.__class__.__name__ in ['int', 'float', 'str']:
-            return False
-        elif key in set_keys:
             return False
         else:
             return True
@@ -20,8 +18,9 @@ def dec(f):
     def get_all_keys_key(self, params, used_keys, set_keys):
         temp = {}
         for key in used_keys:
-            if affects_which_wrappers_are_called(self, key, params.get_param(key), set_keys):
-                temp[key] = params.get_param(key)
+            if key not in set_keys:
+                if affects_which_wrappers_are_called(self, key, params.get_param(key)):
+                    temp[key] = params.get_param(key)
         return param(temp)
 
     def get_all_keys(self, params, recalculate):

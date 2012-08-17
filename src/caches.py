@@ -7,7 +7,7 @@ import subprocess
 import wrapper
 import global_stuff
 
-#from new_features import *
+#from import *
 
 # act of caching: should be putting key, location of file in dictionary, but i don't have that.
 class file_cache_for_wrapper(object):
@@ -55,8 +55,8 @@ class object_cache_for_wrapper(object):
         self.the_wrapper = self.maker.get_param(params, "source_instance", old_self=self)
         # it's not possible that the dumper exists already bc that would have required an instance of the_wrapper, which can't exist since we are creating it.  give dumper_wrapper the_wrapper instance.
         # POSSIBLY PROBLEM AREA
-        #self.maker.set_param(params, "which_wrapper_class", wrapper.generic_pickle_dumper_wrapper)
-        self.pickle_dumper_wrapper = wrapper.generic_pickle_dumper_wrapper(maker, params)
+        #self.maker.set_param(params, "which_wrapper_class", wrapper.pkdW)
+        self.pickle_dumper_wrapper = wrapper.pkdW(maker, params)
         self.file_dumper_wrapper = self.the_wrapper.get_file_dumper(maker, params)
 
 
@@ -101,12 +101,15 @@ class object_cache_for_wrapper(object):
         pass
 
 # is like a regular objects cache, but pickles entire dictionary instead of individual items
-class all_keys_obj_cache(object):
+class akcO(object):
+
+    def __repr__(self):
+        return self.__class__.__name__ + '-' + self.the_wrapper.__repr__()
 
     def __init__(self, maker, params):
         self.dump = {}
         self.the_wrapper = maker.get_param(params, "source_instance", old_self=self)
-        self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + self.the_wrapper.__class__.__name__ + '.pickle'
+        self.pickle_location = constants.BIN_FOLDER + self.__repr__() + '.pk'
         self.existing_dump = {}
         if global_stuff.recalculate == False and os.path.isfile(self.pickle_location):
 
@@ -154,7 +157,7 @@ class all_keys_obj_cache(object):
                 pickle.dump(self.existing_dump.update(self.dump), open(self.pickle_location, 'wb'))
             self.pickles_created.add(key)
 
-class index_cache(all_keys_obj_cache):
+class index_cache(akcO):
 
     # for now, decide that if i'm going to index, then i'm also going to pickle.
     # it's possible that you are caching an object(it wasn't in object cache), but its index is already here
@@ -175,13 +178,16 @@ class index_cache(all_keys_obj_cache):
         
         
 
-class used_keys_obj_cache(object):
+class ukcO(object):
+
+    def __repr__(self):
+        return self.__class__.__name__ + '-' + self.the_wrapper.__repr__()
 
     def __init__(self, maker, params):
         self.dump = None
         self.val = None
         self.the_wrapper = maker.get_param(params, "source_instance", old_self=self)
-        self.pickle_location = constants.BIN_FOLDER + self.__class__.__name__ + '-' + self.the_wrapper.__class__.__name__ + '.pickle'
+        self.pickle_location = constants.BIN_FOLDER + self.__repr__() + '.pk'
         self.pickle_created = False
         if global_stuff.recalculate == False and os.path.isfile(self.pickle_location):
             self.dump = pickle.load(open(self.pickle_location, 'rb'))
@@ -219,5 +225,8 @@ class used_keys_obj_cache(object):
         if to_pickle and not self.pickle_created:
             pickle.dump(val, open(self.pickle_location, 'wb'))
             self.pickle_created = True
+
+class skcO(ukcO):
+    pass
 
 import wrapper

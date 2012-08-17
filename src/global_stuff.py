@@ -13,7 +13,7 @@ OBJ_MANAGER_SIZE = 500
 MUSCLE_PATH = '/home/fultonw/muscle3.8.31_i86linux64'
 
 to_reindex = True
-recalculate = True
+recalculate = False
 
 the_obj_manager = obj_manager()
 the_file_manager = file_manager()
@@ -26,6 +26,8 @@ CSA_FILE = '../catres_sites'
 
 success_file = 'success_catres.txt'
 fail_file = 'fail_catres.txt'
+
+
 
 def print_stuff_dec(f):
 

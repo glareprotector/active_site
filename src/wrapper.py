@@ -33,17 +33,15 @@ class wrapper(object):
     def get_folder(self, object_key):
         return constants.BIN_FOLDER
 
-    def get_wrapper_name(self):
-        return self.__repr__()
 
     # if the wrapper index stuff, its objects can obtain indicies thru maker->object_key_to_index
     # in general, the methods i make should have a maker pointer so that params can be accessed thru the maker
     def get_name(self, object_key, to_reindex = False):
         if not to_reindex:
-            return self.get_wrapper_name() + str(object_key)
+            return self.__repr__() + str(object_key)
         else:
             assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
-            return self.get_wrapper_name() + str(self.maker.object_key_to_index.get(object_key))
+            return self.__repr__() + str(self.maker.object_key_to_index.get(object_key))
 
     # can't get and set same parameter in the same run of constructor.  at the beginning of constructor, set maker.  in init of whatever object, would fetch maker.  can NOT get, then set.  however, can set and THEN get.
     def basic_init(self, maker, params):
@@ -51,9 +49,9 @@ class wrapper(object):
         self.temp_dependents_keys = []
         self.temp_new_param_keys = []
         maker.set_param(params, "source_instance", self, self)
-        self.used_keys_cache = caches.used_keys_obj_cache(maker, params)
-        self.set_keys_cache = caches.used_keys_obj_cache(maker, params)
-        self.all_keys_cache = caches.all_keys_obj_cache(maker, params)
+        self.used_keys_cache = caches.ukcO(maker, params)
+        self.set_keys_cache = caches.skcO(maker, params)
+        self.all_keys_cache = caches.akcO(maker, params)
         if self.makes_index():
             self.object_key_to_index = caches.index_cache(maker, params)
         self.maker = maker
@@ -66,8 +64,8 @@ class wrapper(object):
     def __init__(self, maker, params = param({})):
 #        pdb.set_trace()
         maker, params = self.before_init(maker, params)
-        self.basic_init(maker, params)
         self.other_init(maker, params)
+        self.basic_init(maker, params)
 
     def other_init(self, maker, params):
         pass
@@ -124,6 +122,11 @@ class wrapper(object):
     def set(self, object_key, object, to_pickle, params):
         return self.cache.set(object_key, object, to_pickle, params)
 
+class by_pdb_folder_wrapper(wrapper):
+
+    def get_folder(self, object_key):
+        return constants.BIN_FOLDER + '/' + object_key.get_param('pdb_name') + '/'
+
 class indexing_wrapper(wrapper):
 
     def makes_index(self):
@@ -140,17 +143,17 @@ class obj_wrapper(wrapper):
         return None
 
     def get_file_location(self, object_key):
-        return self.get_folder(object_key) + self.get_name(object_key) + '.pickle'
+        return self.get_folder(object_key) + self.get_name(object_key) + '.pk'
 
     def other_init(self, maker, params):
-        self.maker.set_param(params, "source_instance", self)
+        maker.set_param(params, "source_instance", self)
         self.cache = caches.object_cache_for_wrapper(maker, params)
 
 class mat_obj_wrapper(obj_wrapper):
     
     def get_file_dumper(self, maker, params):
-        return generic_mat_file_dumper_wrapper(maker, params)
-        maker.set_param(params, "which_wrapper_class", wrapper.generic_mat_file_dumper_wrapper)
+        return mfdW(maker, params)
+        maker.set_param(params, "which_wrapper_class", wrapper.mfdW)
         return maker.get_var_or_file(wrapper_catalog, params, True, False, False)
 
 class vect_obj_wrapper(obj_wrapper):
@@ -166,7 +169,7 @@ class file_wrapper(wrapper):
         return self.get_folder(object_key) + self.get_name(object_key)
 
     def other_init(self, maker, params):
-        self.maker.set_param(params, "source_instance", self)
+        maker.set_param(params, "source_instance", self)
         self.cache = caches.file_cache_for_wrapper(maker, params)
         
     @print_stuff_dec
@@ -177,6 +180,9 @@ class file_wrapper(wrapper):
 # for now, assume source_wrapper instance is available.  if instance is available, that means it wasn't created yet, so wouldn't be in wrapper registry, so don't need to fetch it from there.  in the future, might separately create source instance first, in which case might instead pass in the parameters needed to fetch the param.  or could fetch the instance first externally, then pass to this __init__
 class generic_dumper_wrapper(file_wrapper):
 
+    def __repr__(self):
+        return self.__class__.__name__  + '-' + self.source_wrapper.__repr__()
+
     def other_init(self, maker, params):
         self.source_wrapper = maker.get_param(params, "dumper_source_instance")
         #print self, self.source_wrapper
@@ -185,10 +191,6 @@ class generic_dumper_wrapper(file_wrapper):
 
     def before_init(self, maker, params):
         return maker, params
-
-    # this should never have to be called
-    def get_wrapper_name(self):
-        return self.__class__.__name__ + '-' + self.source_wrapper.get_wrapper_name()
 
     def dump_object(self, object):
         pass
@@ -207,12 +209,12 @@ class generic_dumper_wrapper(file_wrapper):
         self.dump_object(object)
         return open(self.get_holding_location(), 'rb')
 
-class generic_pickle_dumper_wrapper(generic_dumper_wrapper):
+class pkdW(generic_dumper_wrapper):
     
     def dump_object(self, object):
         pickle.dump(object, open(self.get_holding_location(), 'wb'))
 
-class generic_mat_file_dumper_wrapper(generic_dumper_wrapper):
+class mfdW(generic_dumper_wrapper):
 
     # do i have to create the folder first?
     def dump_object(self, object):
