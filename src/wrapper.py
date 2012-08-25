@@ -18,6 +18,9 @@ from wrapper_decorator import *
 
 class wrapper(object):
 
+    def specificity(self):
+        return None
+
     def is_indexed(self):
         return True
 
@@ -27,19 +30,18 @@ class wrapper(object):
     def __repr__(self):
         return self.__class__.__name__
 
-    def get_holding_location(self):
-        return constants.BIN_FOLDER + str(id(self))
-
     def get_folder(self, object_key):
         return constants.BIN_FOLDER
 
-
     # if the wrapper index stuff, its objects can obtain indicies thru maker->object_key_to_index
     # in general, the methods i make should have a maker pointer so that params can be accessed thru the maker
-    def get_name(self, object_key, to_reindex = False):
-        if not to_reindex:
+    def get_name(self, object_key, to_reindex = global_stuff.to_reindex):
+        if not self.makes_index():
+            return self.__repr__() + str(object_key)
+        elif not to_reindex:
             return self.__repr__() + str(object_key)
         else:
+            pdb.set_trace()
             assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
             return self.__repr__() + str(self.maker.object_key_to_index.get(object_key))
 
@@ -48,8 +50,9 @@ class wrapper(object):
         self.temp_used_keys = []
         self.temp_dependents_keys = []
         self.temp_new_param_keys = []
-        maker.set_param(params, "source_instance", self, self)
+        maker.set_param(params, "source_instance", self)
         self.used_keys_cache = caches.ukcO(maker, params)
+
         self.set_keys_cache = caches.skcO(maker, params)
         self.all_keys_cache = caches.akcO(maker, params)
         if self.makes_index():
@@ -57,7 +60,7 @@ class wrapper(object):
         self.maker = maker
 
     def before_init(self, maker, params):
-        maker.set_param(params, "dumper_source_instance", self, self)
+        maker.set_param(params, "source_instance", self)
         return maker, params
     
 # if set param, means its value was based on other params, so only other params matter.
@@ -70,35 +73,34 @@ class wrapper(object):
     def other_init(self, maker, params):
         pass
 
-    def set_param(self, params, key, val, old_self = None):
-        if old_self != self:
-            self.temp_new_param_keys[-1].add(key)
+    def set_param(self, params, key, val):
         params.set_param(key, val)
+        self.temp_new_param_keys[-1].add(key)
         return params
 
-    def get_param(self, params, key, record = True, old_self = None):
-        if record and old_self != self:
+    def get_param(self, params, key, record = True):
+        if record:
             self.temp_used_keys[-1].add(key)
         return params.get_param(key)
 
     # wrapper refers to which class, not a specific wrapper instance
     @print_stuff_dec
-    def get_var_or_file(self, wrapper, params, recalculate, to_pickle, to_filelize = False, old_self = None):
-        print '                      called  ', self, wrapper, recalculate, to_pickle, to_filelize
+    def get_var_or_file(self, wrapper, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False):
+ #       print '                      called  ', self, wrapper, recalculate, to_pickle, to_filelize, always_recalculate
         #pdb.set_trace()
         self.set_param(params, "which_wrapper_class", wrapper)
         from wc import wc
-        the_wrapper = self.old_get_var_or_file(wc, params, True, False, False, old_self)
-        used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize)
+#        print wc.object_key_to_index.dump
+        the_wrapper = self.old_get_var_or_file(wc, params, True, False, False)
+        used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate)
         self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
-        print '                      returned ', self, wrapper, recalculate, to_pickle, to_filelize
+#        print '                      returned ', self, wrapper, recalculate, to_pickle, to_filelize, always_recalculate
         return x
 
-    def old_get_var_or_file(self, the_wrapper, params, recalculate, to_pickle, to_filelize = False, old_self = None):
+    def old_get_var_or_file(self, the_wrapper, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False):
 
-        used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize)
-        if old_self != self:
-            self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
+        used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate)
+        self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
         return x
 
 
@@ -107,7 +109,7 @@ class wrapper(object):
     # returns only the object, but after decorating, will return used_keys, all_keys, object
     @dec
     @print_stuff_dec
-    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False):
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
         pass
 
     def get_cache(self):
@@ -122,10 +124,19 @@ class wrapper(object):
     def set(self, object_key, object, to_pickle, params):
         return self.cache.set(object_key, object, to_pickle, params)
 
+class always_recalculate_wrapper(wrapper):
+
+    def always_recalculate(self):
+        return True
+    
+
 class by_pdb_folder_wrapper(wrapper):
 
     def get_folder(self, object_key):
         return constants.BIN_FOLDER + '/' + object_key.get_param('pdb_name') + '/'
+
+    def specificity(self):
+        return 'chain'
 
 class indexing_wrapper(wrapper):
 
@@ -140,7 +151,7 @@ class indexed_wrapper(wrapper):
 class obj_wrapper(wrapper):
 
     def get_file_dumper(self, maker, params):
-        return None
+        return default_file_dumper_wrapper(maker, params)
 
     def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key) + '.pk'
@@ -165,6 +176,12 @@ class vect_obj_wrapper(obj_wrapper):
 
 class file_wrapper(wrapper):
 
+    def get_backup_location(self):
+        return constants.BIN_FOLDER + str(id(self)) + '.backup'
+
+    def get_holding_location(self):
+        return constants.BIN_FOLDER + str(id(self))
+
     def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key)
 
@@ -187,6 +204,7 @@ class generic_dumper_wrapper(file_wrapper):
         self.source_wrapper = maker.get_param(params, "dumper_source_instance")
         #print self, self.source_wrapper
         #pdb.set_trace()
+        maker.set_param(params, "source_instance", self)
         self.cache = caches.file_cache_for_wrapper(maker, params)
 
     def before_init(self, maker, params):
@@ -201,11 +219,12 @@ class generic_dumper_wrapper(file_wrapper):
     # never pickle, since object returned is a file handle
     @dec
     @print_stuff_dec
-    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False):
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
         #pdb.set_trace()
         assert to_pickle == False
         assert recalculate == True
-        object = self.old_get_var_or_file(self.source_wrapper, params, global_stuff.recalculate, to_pickle)
+
+        object = self.old_get_var_or_file(self.source_wrapper, params, global_stuff.recalculate, to_pickle, to_filelize, always_recalculate)
         self.dump_object(object)
         return open(self.get_holding_location(), 'rb')
 
@@ -224,7 +243,16 @@ class generic_vect_file_dumper_wrapper(generic_dumper_wrapper):
 
     # do i have to create the folder first?
     def dump_object(self, object):
-        write_mat(object, self.get_holding_location())
+        write_vect(object, self.get_holding_location())
+
+class default_file_dumper_wrapper(generic_dumper_wrapper):
+
+    def dump_object(self, object):
+        f = open(self.get_holding_location(), 'w')
+        f.write(str(object))
+        #pdb.set_trace()
+        
+        
 
 class wrapper_catalog(obj_wrapper, indexing_wrapper):
 
@@ -238,31 +266,32 @@ class wrapper_catalog(obj_wrapper, indexing_wrapper):
 
     # params contains which_wrapper, and if which_wrapper is a generic_dumper_wrapper, contains 
     @dec
-    def constructor(self, params, recalculate = False, to_pickle = False, to_filelize = False):
+    def constructor(self, params, recalculate = False, to_pickle = False, to_filelize = False, always_recalculate = False):
+#        pdb.set_trace()
         wrapper_instance = self.get_param(params, "which_wrapper_class")(self, params)
         return wrapper_instance
 
 # only purpose of this class is to give wrapper_catalog instance a "maker"
 class famished_wrapper(object):
 
-    def set_param(self, params, key, val, old_self = None):
+    def set_param(self, params, key, val):
         params.set_param(key, val)
         return params
 
-    def get_param(self, params, key, record = True, old_self = None):
+    def get_param(self, params, key, record = True):
         return params.get_param(key)
 
-    def get_var_or_file(self, wrapper, params, recalculate, to_pickle, to_filelize = False, old_self = None):
+    def get_var_or_file(self, wrapper, params, recalculate, to_pickle, to_filelize = False):
         #print '                       ', self, wrapper
 
         self.set_param(params, "which_wrapper_class", wrapper)
         from wc import wc
-        wrapper_used_keys, wrapper_all_keys, the_wrapper = old_get_var_or_file(wc, params, True, False, False, old_self)
+        wrapper_used_keys, wrapper_all_keys, the_wrapper = self.old_get_var_or_file(wc, params, True, False, False)
         used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize)
         #self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
         return x
 
-    def old_get_var_or_file(self, the_wrapper, params, recalculate, to_pickle, to_filelize = False, old_self = None):
+    def old_get_var_or_file(self, the_wrapper, params, recalculate, to_pickle, to_filelize = False):
         #print '                       ', self, wrapper
         used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize)
         return x

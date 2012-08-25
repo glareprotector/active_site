@@ -36,8 +36,8 @@ It represents one sample.  It supports the following functions (given theta)
 #include <cstdlib>
 
 // globals for MPI
-int proc_id;
-int num_procs;
+// int proc_id;
+// int num_procs;
 
 
 
@@ -60,6 +60,9 @@ class sample{
 
  public:
   
+  void simulate_states(arbi_array<num> f_theta);
+
+
   //arbi_array<num> node_potentials;
   //arbi_array<num> edge_potentials;
   arbi_array<num> node_features;
@@ -96,6 +99,13 @@ class sample{
   void get_dL_dMu(int which_obj, arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num>& dL_dNode_Mu, arbi_array<num>& dL_dEdge_Mu);
   arbi_array<num> get_dL_dTheta(int which_obj, arbi_array<num> theta);
   arbi_array<num> get_dL_dTheta_Perturb(int which_obj, arbi_array<num> theta);
+
+  void pseudo_likelihood_helper(arbi_array<num> theta, arbi_array<num>& node_pseudos);
+  num get_L_pseudo(arbi_array<num> theta);
+  arbi_array<num> get_pseudo_likelihood_gradient(arbi_array<num> theta);
+
+  arbi_array<num> get_feature_values(arbi_array<int> states);
+
 
   void get_dPot_dTheta(arbi_array<num> theta, arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& dNode, arbi_array<num>& dEdge);
 

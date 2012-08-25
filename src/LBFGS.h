@@ -9,6 +9,8 @@
 #include <sstream>
 #include <time.h>
 #include <sys/time.h>
+#include "globals.h"
+#include <fstream>
 
 using namespace std;
 
@@ -39,7 +41,7 @@ int _ASSERT_FAILED (char *filename, int line_number, const char *error_msg){
 void Error (const char *error_msg){
   cerr << "ERROR: " << error_msg << endl;
   toggle_error = true;
-  exit (1);
+  //exit (1);
 }
 
 double rt = 1e-8;
@@ -206,10 +208,23 @@ double Minimizer::LineSearch (const vector<double> &x, const vector<double> &d,
 void Minimizer::ApproximateGradient (vector<double> &og, 
 				     const vector<double> &x, 
 				     const double EPSILON){
+
+  /*
+  ofstream myfile;
+  myfile.open("theta_asdf");
+  for(int i = 0; i < x.size(); i++){
+    myfile<<x[i]<<',';
+    }*/
+
+
+
   double base = ComputeFunction (x);
   vector<double> x_copy = x;
-  
-  for (int i = 39; i < 55; i++){
+  for(int i = 0; i < x_copy.size(); i++){
+    //cout<<x[i]<<" ";
+
+  }
+  for (int i = 30; i < 57; i++){
     x_copy[i] += EPSILON;
     //g[i] = (ComputeFunction (x_copy) - base) / EPSILON;
 	double f = ComputeFunction (x_copy);
@@ -219,6 +234,7 @@ void Minimizer::ApproximateGradient (vector<double> &og,
 	if (proc_id==0)
 		cerr << i << ": " << og[i] <<"::" << g << " " << (og[i]-g)/g <<"; f=" << f <<"; base=" << base <<endl;
   }
+  //exit(1);
 }
 
 /* LBFGS routine */
@@ -273,11 +289,13 @@ if (proc_id==0)
 	time(&start);
 }
 
-	/*
-if (iterations==20 || iterations<4)
+	
+//if (iterations%10  == 0)
+ if(false)
 {
-	vector<vector<double> > aa (6, g[k%M]);
-	for (int i = 4; i < 5; i++)
+  
+
+	for (int i = 8; i < 9; i++)
 	  //ApproximateGradient (aa[i], x[k%2], pow(10.0,(double)-i));
 	  ApproximateGradient (g[k%M], x[k%2], pow(10.0,(double)-i));
 
@@ -290,7 +308,7 @@ if (iterations==20 || iterations<4)
 
 	//if (iterations==3)exit(0);
 }
-	*/
+	
 
 	if (use_preconditioner) ComputeHessianDiagonal (h, x[k%2]);
 

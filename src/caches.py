@@ -15,7 +15,7 @@ class file_cache_for_wrapper(object):
     # files_created is the equivalent of the dump in the objects_cache.
     def __init__(self, maker, params):
         self.maker = maker
-        self.the_wrapper = self.maker.get_param(params, "source_instance", old_self=self)
+        self.the_wrapper = self.maker.get_param(params, "source_instance")
         self.files_created = set()
 
 
@@ -34,10 +34,12 @@ class file_cache_for_wrapper(object):
         return open(self.the_wrapper.get_file_location(object_key), mode)
 
     # moves object from temporary to permanent location.  makes destination folder if needed. keep track of which files were get'ed in this execution.  set is only called right after get is called
-    def set(self, object_key, object, to_pickle, params, to_filelize = None):
+    # if this is not chain specific, only do this
+    def set(self, object_key, object, to_pickle, params, to_filelize = None, always_recalculate = False):
         self.allocate(object_key)
         subprocess.call(['mv', object.name, self.the_wrapper.get_file_location(object_key)])
         self.files_created.add(object_key)
+        #pdb.set_trace()
         return open(self.the_wrapper.get_file_location(object_key), 'r')
 
     # creates folder for object whose type is specified by the wrapper. this step does the prep work allowing the object to be put in the cache, which in this case is the folder in the file system
@@ -52,11 +54,15 @@ class object_cache_for_wrapper(object):
     def __init__(self, maker, params):
         self.maker = maker
         self.dump = {}
-        self.the_wrapper = self.maker.get_param(params, "source_instance", old_self=self)
+        self.the_wrapper = self.maker.get_param(params, "source_instance")
         # it's not possible that the dumper exists already bc that would have required an instance of the_wrapper, which can't exist since we are creating it.  give dumper_wrapper the_wrapper instance.
         # POSSIBLY PROBLEM AREA
         #self.maker.set_param(params, "which_wrapper_class", wrapper.pkdW)
+        #pdb.set_trace()
+        self.maker.set_param(params, "dumper_source_instance", self.the_wrapper)
         self.pickle_dumper_wrapper = wrapper.pkdW(maker, params)
+        self.maker.set_param(params, "dumper_source_instance", self.the_wrapper)
+        #pdb.set_trace()
         self.file_dumper_wrapper = self.the_wrapper.get_file_dumper(maker, params)
 
 
@@ -89,11 +95,12 @@ class object_cache_for_wrapper(object):
         if to_pickle: 
             #pdb.set_trace()
             # here, already stored reference to a wrapper instance.  so just call it directly.
-            temp_f = self.the_wrapper.old_get_var_or_file(self.pickle_dumper_wrapper, params, True, False, False)
+            temp_f = self.the_wrapper.old_get_var_or_file(self.pickle_dumper_wrapper, params, True, False, False, always_recalculate = False)
         if to_filelize:
             #pdb.set_trace()
             assert self.file_dumper_wrapper != None
-            temp_f = self.the_wrapper.old_get_var_or_file(self.file_dumper_wrapper, params, True, False, False)
+            #pdb.set_trace()
+            temp_f = self.the_wrapper.old_get_var_or_file(self.file_dumper_wrapper, params, True, False, False, always_recalculate = False)
         return object
 
     # don't have to do anything to put the object in the cache
@@ -108,14 +115,14 @@ class akcO(object):
 
     def __init__(self, maker, params):
         self.dump = {}
-        self.the_wrapper = maker.get_param(params, "source_instance", old_self=self)
+        self.the_wrapper = maker.get_param(params, "source_instance")
         self.pickle_location = constants.BIN_FOLDER + self.__repr__() + '.pk'
         self.existing_dump = {}
-        if global_stuff.recalculate == False and os.path.isfile(self.pickle_location):
-
-            self.existing_dump = pickle.load(open(self.pickle_location, 'rb'))
-        else:
-            self.existing_dump = {}
+        if global_stuff.recalculate == False:
+            try:
+                self.existing_dump = pickle.load(open(self.pickle_location, 'rb'))
+            except:
+                self.existing_dump = {}
         
         self.pickles_created = set()
         self.maker = maker
@@ -154,7 +161,8 @@ class akcO(object):
             if recalculate:
                 pickle.dump(self.dump, open(self.pickle_location, 'wb'))
             else:
-                pickle.dump(self.existing_dump.update(self.dump), open(self.pickle_location, 'wb'))
+                self.existing_dump.update(self.dump)
+                pickle.dump(self.existing_dump, open(self.pickle_location, 'wb'))
             self.pickles_created.add(key)
 
 class index_cache(akcO):
@@ -162,7 +170,7 @@ class index_cache(akcO):
     # for now, decide that if i'm going to index, then i'm also going to pickle.
     # it's possible that you are caching an object(it wasn't in object cache), but its index is already here
     def get_and_set_index(self, key, to_reindex = global_stuff.to_reindex):
-        print self.dump
+        #print self.dump
         if self.has(key, to_reindex):
             return self.get(key)
         else:
@@ -186,15 +194,15 @@ class ukcO(object):
     def __init__(self, maker, params):
         self.dump = None
         self.val = None
-        self.the_wrapper = maker.get_param(params, "source_instance", old_self=self)
+        self.the_wrapper = maker.get_param(params, "source_instance")
         self.pickle_location = constants.BIN_FOLDER + self.__repr__() + '.pk'
         self.pickle_created = False
-        if global_stuff.recalculate == False and os.path.isfile(self.pickle_location):
-            self.dump = pickle.load(open(self.pickle_location, 'rb'))
-            #self.pickle_created = True
-        else:
-            #self.pickle_created = False
-            self.dump = None
+        if global_stuff.recalculate == False:
+            try:
+                self.dump = pickle.load(open(self.pickle_location, 'rb'))
+
+            except:
+                self.dump = None
         self.maker = maker
 
     # recalculate specifies whether to look at possible pickle file and use it

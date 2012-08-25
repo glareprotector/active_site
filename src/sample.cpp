@@ -26,6 +26,7 @@ sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> 
   this->num_nodes = _node_features.size(0);
   this->num_edges = _edge_features.size(0);
   this->true_states = _true_states;
+  cout<<true_states<<endl;
   this->folder = _folder;
   this->pdb_name = _pdb_name;
   this->chain_letter = _chain_letter;
@@ -33,6 +34,12 @@ sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> 
   this->node_to_neighbors = arbi_array< arbi_array<int> >(1, this->num_nodes);
   this->pos_to_edge = arbi_array< pair<int,int> >(1, this->num_edges);
   this->edge_to_pos = arbi_array<int>(2, this->num_nodes, this->num_nodes);
+
+
+
+
+
+
 
   for(int i = 0; i < this->num_edges; i++){
     int node1 = _edges(i,0); // should use hashmap version?
@@ -54,6 +61,45 @@ sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> 
   this->times_called = 0;
 }
 
+
+void sample::simulate_states(arbi_array<num> f_theta){
+  // here fake modify the true_states.
+
+  // this one puts residues close to true cat sites as 1
+  for(int i = 0; i < true_states.size(0); i++){
+    if(true_states(i) == 1){
+      for(int j = i - 4; j< i + 4; j++){
+	if(j >= 0 && j < true_states.size(0)-1){
+	  if(rand()%3 == 0){
+	    true_states(j) = 1;
+	  }
+	}
+      }
+    }
+  }
+
+
+
+
+  // this reads in fake weight vector, generates node potentials, decides states based on those
+  
+  arbi_array<num> f_node_potentials = get_node_potentials(f_theta);
+  arbi_array<num> f_edge_potentials = get_edge_potentials(f_theta);
+  arbi_array<num> f_node_marginals;
+  arbi_array<num> f_edge_marginals;
+
+  get_marginals_BP(f_node_potentials, f_edge_potentials, f_node_marginals, f_edge_marginals);
+  for(int i = 0; i < num_nodes; i++){
+    if(num(rand() % 1000) / 1000.0 > f_node_marginals(i,1)){
+      true_states(i) = 1;
+    }
+    else{
+      true_states(i) = 0;
+    }
+  }
+
+}
+
 arbi_array<num> sample::get_node_potentials(arbi_array<num> theta){
   arbi_array<num> node_potentials(2, num_nodes, p_model->num_states);
   for(int i = 0; i < num_nodes; i++){
@@ -62,13 +108,18 @@ arbi_array<num> sample::get_node_potentials(arbi_array<num> theta){
       num temp = 0;
       for(int k = 0; k < p_model->num_node_features; k++){
 	temp = temp + node_features(i,k) * theta(p_model->node_map(j,k));
-	//if(i == 0 && j == 0){
-	//  cout<<k<<' '<<node_features(i,k)<<' '<<theta(p_model->node_map(j,k))<<' '<<temp<<" "<<num_nodes<<" "<<p_model->num_node_features<<endl;
+	//cout<<temp<<" ";
+	//if(i == num_nodes-1 && j == 0){
+	//if(k == p_model->num_node_features - 1 && j == 0){
+	//  cout<<k<<' '<<node_features(i,k)<<' '<<theta(p_model->node_map(j,k))<<' '<<temp<<" "<<num_nodes<<" "<<i<<" "<<node_features.size(0)<<" "<<node_features.size(1)<<endl;
 	//}
       }
       node_potentials(i,j) = temp;
     }
   }
+  //cout<<endl<<"FFFFF "<<node_features(num_nodes-1, p_model->num_node_features-1)<<endl;
+  //cout<<node_features<<endl;
+  //cout<<node_potentials<<endl;
   return node_potentials;
 }
 
@@ -99,6 +150,7 @@ void sample::get_marginals(arbi_array<num> theta, arbi_array<num>& node_marginal
 
 // which infer method to used is stored in model
 void sample::get_marginals(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals){
+  //cout<<"which_infer: "<<p_model->which_infer<<endl;
   switch(p_model->which_infer){
   case 0:
     get_marginals_mean_field(node_potentials, edge_potentials, node_marginals, edge_marginals);
@@ -107,12 +159,21 @@ void sample::get_marginals(arbi_array<num> node_potentials, arbi_array<num> edge
     get_marginals_BP(node_potentials, edge_potentials, node_marginals, edge_marginals);
     break;
   }
+  /*
   //cout<<node_marginals<<endl;
-  // try setting marginals to 1 on 0's, 0 on 1's
+  arbi_array<num> node_marginals1;
+  arbi_array<num> edge_marginals1;
+  get_marginals_mean_field(node_potentials, edge_potentials, node_marginals1, edge_marginals1);
+  //node_marginals = node_marginals1;
+  //edge_marginals = edge_marginals1;
   for(int i = 0; i < num_nodes; i++){
-    //node_marginals(i,0) = 1;
-    //node_marginals(i,1) = 1;
+    if(fabs(node_marginals(i,0)-node_marginals1(i,0)) > .1)cout<<node_marginals(i,0)<<" "<<node_marginals1(i,0)<<endl;
   }
+  for(int i = 0; i < num_edges; i++){
+    //cout<<edge_marginals(i,0,0)<<" "<<edge_marginals1(i,0,0)<<" "<<edge_marginals(i,0,1)<<" "<<edge_marginals1(i,0,1)<<edge_marginals(i,1,0)<<" "<<edge_marginals1(i,1,0)<<" "<<edge_marginals(i,1,1)<<" "<<edge_marginals1(i,1,1)<<endl;
+  }
+  //exit(1);
+  */
 }
 
 // storing marginals in regular non-log form
@@ -229,6 +290,56 @@ void sample::get_marginals_mean_field(arbi_array<num> node_potentials, arbi_arra
   }
 }
 
+arbi_array<num> sample::get_feature_values(arbi_array<int> states){
+
+  arbi_array<num> feature_values(1, p_model->theta_length);
+  feature_values.fill(0);
+
+  for(int i = 0; i < p_model->num_node_features; i++){
+    for(int j = 0; j < num_nodes; j++){
+      feature_values(p_model->node_map(states(j), i)) = feature_values(p_model->node_map(states(j), i)) + node_features(j,i);
+    }
+  }
+
+  for(int i = 0; i < p_model->num_edge_features; i++){
+    for(int j = 0; j < num_edges; j++){
+      int u = pos_to_edge(j).first;
+      int v = pos_to_edge(j).second;
+      feature_values(p_model->edge_map(states(u),states(v),i)) += edge_features(j,i);
+    }
+  }
+
+  return feature_values;
+}
+
+
+arbi_array<num> sample::get_pseudo_likelihood_gradient(arbi_array<num> theta){
+  arbi_array<num> node_pseudos;
+  pseudo_likelihood_helper(theta, node_pseudos);
+  // have to compute feature value for each configuration that is 1 away from the true_states.  do this for each feature first
+  // compute node_features for true_states
+  arbi_array<num> grad(1, p_model->theta_length);
+  grad.fill(0);
+  
+  assert(theta.size(0) == p_model->theta_length);
+  
+  for(int i = 0; i < num_nodes; i++){
+    arbi_array<num> exp_grad(1, theta.size(0));
+    exp_grad.fill(0);
+    for(int k = 0; k < p_model->num_states; k++){
+      arbi_array<int> states = true_states;
+      states(i) = k;
+      arbi_array<num> temp = get_feature_values(states);
+      temp.scale(node_pseudos(i,k));
+      exp_grad = exp_grad + temp;
+    }
+    exp_grad.scale(-1.0);
+    grad = grad + exp_grad;
+    grad = grad + get_feature_values(true_states);
+  }
+  grad.scale(-1.0);
+  return grad;
+}
 
 // remember to take the negative of gradient
 arbi_array<num> sample::get_data_likelihood_gradient(arbi_array<num> node_marginals, arbi_array<num> edge_marginals){
@@ -310,6 +421,13 @@ num sample::get_log_Z(arbi_array<num> node_potentials, arbi_array<num> edge_pote
   }
   assert(isfinite(entropy));
   assert(isfinite(energy));
+  num af = 0;
+  for(int i = 0; i < node_features.size(0); i++){
+    for(int j = 0; j < node_features.size(1); j++){
+      af += node_features(i,j);
+    }
+  }
+  //cout<<endl<<"Z: "<<proc_id<<" "<<entropy - energy<<" "<<af<<" GGGGGGGGG "<<node_features(num_nodes-1, p_model->num_node_features-1)<<endl;
 
   return entropy - energy;
 }
@@ -327,6 +445,8 @@ num sample::get_data_potential(arbi_array<num> node_potentials, arbi_array<num> 
     int node2 = pos_to_edge(i).second;
     temp += get_edge_potential(edge_potentials, node1, node2, true_states(node1), true_states(node2));
   }
+
+  //cout<<"pot: "<<temp<<endl;
   return temp;
 }
 
@@ -349,27 +469,29 @@ num sample::get_data_likelihood(arbi_array<num> theta){
 
   assert(isfinite(log_z));
   assert(isfinite(data_potential));
-
+  //cout<<"log_z: "<<log_z<<endl;
   num ans = log_z - data_potential;
-  //if(ans <= 0){
-  if(false){
+  //assert(ans > 0);
+  if(ans <= 0){
+    //if(false){
     cout<<setprecision(32);
     cout<<this->folder<<" log_z: "<<log_z<<" config: ";//<<config_likelihood<<endl;
     cout<<"ans: "<<ans<<endl;
-    //cout<<p_model->theta<<endl;
+    //cout<<theta<<endl;
     //cout<<endl<<"NODE FEATURES"<<endl;
     //cout<<node_features<<endl;
     //cout<<endl<<"NODE pOTENTIALS:"<<endl;
     //cout<<node_potentials<<endl;
-    //cout<<endl<<"NODE MARGINALS:"<<endl;
-    //cout<<node_marginals<<endl;
-    cout<<this->folder<<" log_z: "<<log_z;//<<" config: "<<config_likelihood<<endl;
+    cout<<endl<<"NODE MARGINALS:"<<endl;
+    cout<<node_marginals<<endl;
+    cout<<this->folder<<" log_z: "<<log_z<<endl;//" config: "<<config_likelihood<<endl;
     //p_model->theta.write(string("theta_shorter.csv"), ',');
     arbi_array<num> to_write = arbi_array<num>::transpose(node_features);
     to_write.write(this->folder + string("XnodeNormed.csv"), ',');
-    //cout<<"THETA: "<<p_model->theta<<endl;
+    cout<<"THETA: "<<theta<<endl;
     cout<<"FFFFFFFFFFFFF"<<endl;
-    assert(false);
+    //exit(1);
+    //assert(false);
     }
   //assert(ans >= 0);
   /*
@@ -401,6 +523,11 @@ num sample::get_data_likelihood(arbi_array<num> theta){
 }
 
 num sample::get_L(int which_obj, arbi_array<num>& theta){
+  num temp = 0;
+  for(int i = 0; i < theta.size(0); i++){
+    temp += theta(i);
+  }
+  //cout<<endl<<"E: "<<proc_id<<" "<<temp<<endl;
   switch(which_obj){
   case 0:
     return get_data_likelihood(theta);
@@ -411,6 +538,9 @@ num sample::get_L(int which_obj, arbi_array<num>& theta){
   case 2:
     return get_L_nodewise(theta);
     break;
+  case 3:
+    return get_L_pseudo(theta);
+    break;
   }
 }
 
@@ -418,6 +548,23 @@ num sample::smooth_f(num x){
   return x*x;
   return exp(x*x);
 }
+
+num sample::get_L_pseudo(arbi_array<num> theta){
+  arbi_array<num> node_pseudos;
+  pseudo_likelihood_helper(theta, node_pseudos);
+  num L = 0;
+  for(int i = 0; i < num_nodes; i++){
+    L += log(node_pseudos(i,true_states(i)));
+  }
+  if(isfinite(L) == false){
+    cout<<node_pseudos<<endl;
+    cout<<theta;
+    cout<<endl<<L<<endl;
+    exit(1);
+  }
+  return -1.0 * L;
+}
+    
  
 
 num sample::get_L_nodewise(arbi_array<num> theta){
@@ -536,6 +683,114 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num> node_marginals, arbi_a
 }
       
 	
+// function that takes in theta and computes node/edge potentials.  then for each node, for each node/each state, looks at neighbor true states to compute node's pseudolikelihood
+void sample::pseudo_likelihood_helper(arbi_array<num> theta, arbi_array<num>& node_pseudos){
+
+  arbi_array<num> node_potentials = get_node_potentials(theta);
+  arbi_array<num> edge_potentials = get_edge_potentials(theta);
+  
+  //node_pseudos = arbi_array<num>(2, num_nodes, p_model->num_states);
+  //node_pseudos.fill(0);
+  arbi_array<num> node_pseudos1 = arbi_array<num>(2, num_nodes, p_model->num_states);
+  node_pseudos1.fill(0);
+
+
+  
+  for(int i = 0; i < num_nodes; i++){
+    for(int k = 0; k < p_model->num_states; k++){
+      node_pseudos1(i,k) += node_potentials(i,k);
+      arbi_array<int> nbrs = node_to_neighbors(i);
+      for(int j = 0; j < nbrs.size(0); j++){
+	int n = nbrs(j);
+	node_pseudos1(i,k) += get_edge_potential(edge_potentials, i, n, k, true_states(n));
+      }
+    }
+  }
+ 
+  //cout<<node_pseudos1<<endl;
+
+
+  // normalize proportional exp of their weights
+  for(int i = 0; i < num_nodes; i++){
+    num log_sum = 0;
+    for(int j = 0; j < p_model->num_states; j++){      
+      if(j == 1){
+	log_sum = LogScore_ADD(node_pseudos1(i,0), node_pseudos1(i,1));
+      }
+      if(j > 1){
+	LogScore_PLUS_EQUALS(log_sum, node_pseudos1(i,j));
+      }
+    }
+    num norm = 0;
+    for(int j = 0; j < p_model->num_states; j++){
+      node_pseudos1(i,j) = exp(node_pseudos1(i,j) - log_sum);
+      norm += node_pseudos1(i,j);
+    }
+
+    for(int j = 0; j < p_model->num_states; j++){
+      node_pseudos1(i,j) /= norm;
+    }
+  }
+  
+
+  
+  node_pseudos = node_pseudos1;
+
+  //cout<<node_pseudos<<endl;
+    //cout<<node_features<<endl;
+    //cout<<"FSDFDFDF"<<endl;
+  //exit(1);
+
+
+  /*
+  for(int i = 0; i < num_nodes; i++){
+    arbi_array<int> states = true_states;
+    for(int k = 0; k < p_model->num_states; k++){
+      states(i) = k;
+      arbi_array<num> feature_values = get_feature_values(states);
+      for(int l = 0; l < p_model->theta_length; l++){
+	node_pseudos(i,k) += feature_values(l) * theta(l);
+      }
+    }
+    }
+
+  //for(int i = 0; i < num_nodes; i++){
+  //cout<<node_pseudos(i,1)-node_pseudos(i,0)<<" "<<node_pseudos1(i,1) - node_pseudos1(i,0)<<endl;
+    //}
+
+
+  
+
+   // normalize proportional exp of their weights
+  for(int i = 0; i < num_nodes; i++){
+    num log_sum = 0;
+    for(int j = 0; j < p_model->num_states; j++){      
+      if(j == 1){
+	log_sum = LogScore_ADD(node_pseudos(i,0), node_pseudos(i,1));
+      }
+      if(j > 1){
+	LogScore_PLUS_EQUALS(log_sum, node_pseudos(i,j));
+      }
+    }
+    num norm = 0;
+    for(int j = 0; j < p_model->num_states; j++){
+      node_pseudos(i,j) = exp(node_pseudos(i,j) - log_sum);
+      norm += node_pseudos(i,j);
+    }
+
+    for(int j = 0; j < p_model->num_states; j++){
+      node_pseudos(i,j) /= norm;
+    }
+    }
+
+
+  
+  //for(int i = 0; i < num_nodes; i++){
+  //  cout<<node_pseudos(i,0)<<" "<<node_pseudos1(i,0)<<endl;
+  //}
+  */
+
+}
 
 
 arbi_array<num> sample::get_data_likelihood_gradient(arbi_array<num> theta){
@@ -545,6 +800,12 @@ arbi_array<num> sample::get_data_likelihood_gradient(arbi_array<num> theta){
   arbi_array<num> edge_marginals;
   //cout<<theta<<endl;
   //cout<<node_potentials<<endl;
+  num af = 0;
+  for(int i = 0; i < node_potentials.linear_length; i++){
+    af += node_potentials.m_data[i];
+  }
+  //cout<<endl<<"G: "<<af<<endl<<theta<<endl;
+
   get_marginals(node_potentials, edge_potentials, node_marginals, edge_marginals);
   arbi_array<num> grad = get_data_likelihood_gradient(node_marginals, edge_marginals);
   /*if(fabs(theta(0)) > .00001){
@@ -562,6 +823,9 @@ arbi_array<num> sample::get_dL_dTheta(int which_obj, arbi_array<num> theta){
   
   if(which_obj == 0){
     return get_data_likelihood_gradient(theta);
+  }
+  else if(which_obj == 3){
+    return get_pseudo_likelihood_gradient(theta);
   }
   else{
     return get_dL_dTheta_Perturb(which_obj, theta);
@@ -746,10 +1010,14 @@ void sample::get_marginals_BP(arbi_array<num> node_potentials, arbi_array<num> e
 	arbi_array<int> node1_neighbors = node_to_neighbors(node1);
 	arbi_array<int> node2_neighbors = node_to_neighbors(node2);
 	for(int l = 0; l < node1_neighbors.size(0); l++){
-	  temp *= get_message(*new_msgs, node1_neighbors(l), node1, j);
+	  //if(l != node2){
+	    temp *= get_message(*new_msgs, node1_neighbors(l), node1, j);
+	    // }
 	}
 	for(int l = 0; l < node2_neighbors.size(0); l++){
-	  temp *= get_message(*new_msgs, node2_neighbors(l), node2, k);
+	  //if(l != node1){
+	    temp *= get_message(*new_msgs, node2_neighbors(l), node2, k);
+	    // }
 	}
 	edge_marginals(i,j,k) = temp;
 	sum += temp;
@@ -762,9 +1030,15 @@ void sample::get_marginals_BP(arbi_array<num> node_potentials, arbi_array<num> e
       }
     }
   }
-  //cout<<node_marginals<<endl;
+
+  /*for(int i = 0; i < num_nodes; i++){
+    cout<<node_marginals(i,0)+node_marginals(i,1)<<endl;
+    }*/
+
+  //cout<<edge_marginals<<endl;
   //cout<<edge_marginals<<endl;
   //assert(false);
+  //exit(1);
 }
 
   

@@ -110,6 +110,9 @@ class cpp_caller{
     case globals::STRING_MAT:
       pObj = cpp_caller::CPPString_mat_to_py_string_mat(*(arbi_array<string>*)val_p);
       break;
+    case globals::INT_VECT:
+      pObj = cpp_caller::cpp_int_vect_to_py_int_list(*(arbi_array<int>*)val_p);
+      break;
     }
 
 
@@ -127,11 +130,11 @@ class cpp_caller{
     PyObject* pMethodName = PyString_FromCPPString(string("get_param"));
     PyObject* pKey = cpp_caller::PyString_FromCPPString(key);
     PyObject* pResult = PyObject_CallMethodObjArgs(pParams, pMethodName, pKey, NULL);
-    PyObject_Print(pKey, stdout, 0);
-    PyObject_Print(pResult, stdout, 0);
-    py_print(pKey);
-    py_print(pParams);
-    py_print(pResult);
+    //PyObject_Print(pKey, stdout, 0);
+    //PyObject_Print(pResult, stdout, 0);
+    //py_print(pKey);
+    //py_print(pParams);
+    //py_print(pResult);
     Py_DECREF(pMethodName);
     Py_DECREF(pKey);
     return pResult;
@@ -140,6 +143,7 @@ class cpp_caller{
   
   // converts python list of float to c++ array of nums
   static arbi_array<num> py_float_list_to_cpp_num_vect(PyObject* pList, bool decref = false){
+    if(pList == NULL) throw 20;
     int len = PyList_Size(pList);
     arbi_array<num> result(1, len);
     for(int i = 0; i < len; i++){
@@ -162,6 +166,7 @@ class cpp_caller{
 
   // converts python list of ints to c++ array of ints
   static arbi_array<int> py_int_list_to_cpp_int_vect(PyObject* pList, bool decref = false){
+    if(pList == NULL) throw 20;
     int len = PyList_Size(pList);
     arbi_array<int> result(1, len);
     for(int i = 0; i < len; i++){
@@ -183,6 +188,7 @@ class cpp_caller{
 
   // convert python float list to c++ list of strings
   static arbi_array<string> py_string_list_to_cpp_string_vect(PyObject* pList, bool decref = false){
+    if(pList == NULL) throw 20;
     int len = PyList_Size(pList);
     arbi_array<string> result(1, len);
     for(int i = 0; i < len; i++){
@@ -216,9 +222,10 @@ class cpp_caller{
 
   // convert python mat of strings to c++ mat of strings
   static arbi_array<string> py_string_mat_to_cpp_string(PyObject* pMat, bool decref = false){
+    if(pMat == NULL) throw 20;
     int size0 = PyList_Size(pMat);
-    cout<<"inside string mat to cpp mat"<<endl;
-    cpp_caller::py_print(pMat);
+    //cout<<"inside string mat to cpp mat"<<endl;
+    //cpp_caller::py_print(pMat);
     PyObject* pRow = PyList_GetItem(pMat, 0);
     int size1 = PyList_Size(pRow);
     arbi_array<string> xx(2, size0, size1);
@@ -247,6 +254,7 @@ class cpp_caller{
 
   // convert python float matrix(list of lists) to c++ matrix of nums
   static arbi_array<num> py_float_mat_to_cpp_num_mat(PyObject* pMat, bool decref = false){
+    if(pMat == NULL) throw 20;
     // get dimensions of mat
     int height = PyList_Size(pMat);
     int width = PyList_Size(PyList_GetItem(pMat, 0));
@@ -279,6 +287,7 @@ class cpp_caller{
 
 
   static arbi_array<int> py_int_mat_to_cpp_int_mat(PyObject* pMat, bool decref = false){
+    if(pMat == NULL) throw 20;
     // get dimensions of mat
     int height = PyList_Size(pMat);
     int width = PyList_Size(PyList_GetItem(pMat, 0));
@@ -309,9 +318,9 @@ class cpp_caller{
 
   // converts python string to c++ string
   static string CPPString_From_PyString(PyObject* pStr){
-    cout<<"2222"<<endl;
+    //cout<<"2222"<<endl;
     PyObject_Print(pStr, stdout, 0);
-    cout<<"3333"<<endl;
+    //cout<<"3333"<<endl;
     return string(PyString_AsString(pStr));
   }
   
@@ -322,7 +331,7 @@ class cached_obj_getter: public cpp_caller{
  public:
   
   // takes in param object that is already set and calls the specified wrapper_instance 
-    static PyObject* call_wrapper(string wrapper_module, string wrapper_instance_name, PyObject* pParams, bool recalculate, bool to_pickle, bool to_filelize){
+  static PyObject* call_wrapper(string wrapper_module, string wrapper_name, PyObject* pParams, bool recalculate, bool to_pickle, bool to_filelize, bool always_recalculate = false){
 
 
 
@@ -330,29 +339,27 @@ class cached_obj_getter: public cpp_caller{
     PyObject* pRecalculate;
     PyObject* pTo_Pickle;
     PyObject* pTo_Filelize;
+    PyObject* pAlways_Recalculate;
 
-    py_print(pParams);
+    //py_print(pParams);
     if(recalculate){ pRecalculate = Py_True;} else{ pRecalculate = Py_False;}
     if(to_pickle){ pTo_Pickle = Py_True;} else{ pTo_Pickle = Py_False;}
     if(to_filelize){ pTo_Filelize = Py_True;} else{ pTo_Filelize = Py_False;}
+    if(always_recalculate){ pAlways_Recalculate = Py_True;} else{ pAlways_Recalculate = Py_False;}
 
-    // get the wrapper instance
-    PyObject* pWrapperInstance = get_module_PyObject(wrapper_module, wrapper_instance_name);
-
-    // get method name
-    PyObject* pMethodName = PyString_FromCPPString(string("constructor"));
-    py_print(pWrapperInstance);
-    py_print(pMethodName);
-
+    // get the wrapper class reference(not an instance)
+    PyObject* pWrapper = get_module_PyObject(wrapper_module, wrapper_name);
+    //py_print(pWrapper);
+    // get wc.get_stuff reference
+    PyObject* pGetStuff = get_module_PyObject(string("wc"), string("get_stuff")); 
+    //py_print(pGetStuff);
     // call method
-    PyObject* pResult = PyObject_CallMethodObjArgs(pWrapperInstance, pMethodName, pParams, pRecalculate, pTo_Pickle, pTo_Filelize, NULL);
-    py_print(pResult);
-    PyObject* pVal = PyTuple_GetItem(pResult, 2);
-    Py_INCREF(pVal);
-    Py_DECREF(pResult);
-    cout<<"                inside call_wrapper"<<endl;
-    py_print(pVal);
-    return pVal;
+    PyObject* pResult = PyObject_CallFunctionObjArgs(pGetStuff, pWrapper, pParams, pRecalculate, pTo_Pickle, pTo_Filelize, pAlways_Recalculate, NULL);
+    if(pResult == NULL){
+      cout<<"BAD"<<wrapper_name<<endl;
+    }
+    //py_print(pResult);
+    return pResult;
   }
 
   static PyObject* _get(string wrapper_name, arbi_array<string> param_names, arbi_array<void*> values, arbi_array<int> types){
@@ -388,8 +395,8 @@ class cached_obj_getter: public cpp_caller{
     PyObject* pVal = PyTuple_GetItem(pResult, 2);
     Py_INCREF(pVal);
     Py_DECREF(pResult);
-    cout<<"                              OOOOOOOOOOOOOOOOOOOOOOOO"<<endl;
-    py_print(pVal);
+    //cout<<"                              OOOOOOOOOOOOOOOOOOOOOOOO"<<endl;
+    //py_print(pVal);
     return pVal;
   }
 };
