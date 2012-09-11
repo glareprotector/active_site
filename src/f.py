@@ -2,6 +2,12 @@
 from wrapper_decorator import dec
 from wrapper import *
 import new_new_objects as objects
+import re
+import string
+from Bio.PDB import Polypeptide
+import numpy
+import global_stuff
+
 
 class rW(obj_wrapper):
 
@@ -17,6 +23,7 @@ class sW(obj_wrapper):
     # params will contain g - the fxn, and 'values' - list of values
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+
         ans = []
         values = self.get_param(params, 'values')
         for x in values:
@@ -94,9 +101,100 @@ class aaW(obj_wrapper):
 
     # gets b-factor of residue
     @dec
-    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False):
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+
+#        pdb.set_trace()
+        all_bs = self.get_var_or_file(objects.bfW, params, recalculate, True, False, False)
+
+        
         pos_to_aa = self.get_var_or_file(objects.eW, params, recalculate, True, False, always_recalculate)
-        chain = self.get_var_or_file(objects.cW, params, recalculate, True, False, always_recalculate)
-        res = chain[pos_to_aa[self.get_param(params, 'pos')]]
-        return [global_stuff.get_representative_atom(res).get_bfactor()]
+        return [all_bs[pos_to_aa[self.get_param(params, 'pos')]]]
+#        return [global_stuff.get_representative_atom(res).get_bfactor()]
     
+class akW(obj_wrapper):
+
+    # computes KL div between 2 columns of 2 chains
+    @dec
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+        msa = self.get_var_or_file(objects.agW, params, recalculate, True, True, False)
+        pos_to_aa = self.get_var_or_file(objects.eW, params, recalculate, True, False, False)
+        aa1 = pos_to_aa[self.get_param(params, 'pos1')]
+        aa2 = pos_to_aa[self.get_param(params, 'pos2')]
+        col1 = msa[:,aa1]
+        col2 = msa[:,aa2]
+
+        d1 = re.sub(r'-','',col1)
+        d2 = re.sub(r'-','',col2)
+        return [global_stuff.get_KL(d1,d2)]
+
+class axW(obj_wrapper):
+
+    # g fxn for DSSP categorical wrapper
+    @dec
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+        dssp_dict = self.get_var_or_file(objects.awW, params, recalculate, True, True, False)
+        return dssp_dict[(self.get_param(params, 'pos'),self.get_param(params, 'chain_letter'))]
+
+
+class ayW(obj_wrapper):
+
+    #categorical feature fxn for DSSP
+    @dec
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+#        pdb.set_trace()
+        self.set_param(params, 'g', axW)
+        self.set_param(params, 'values', [ [x] for x in constants.DSSP_CATEGORIES])
+        return self.get_var_or_file(sW, params, recalculate, False)
+    
+
+class bbW(obj_wrapper):
+
+    # NACCESS feature
+    @dec
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+
+        the_dict = self.get_var_or_file(objects.baW, params, recalculate, True, True, False)
+        chain_letter = self.get_param(params, 'chain_letter')
+        pos = self.get_param(params, 'pos')
+        key = (pos, chain_letter)
+        vals = the_dict[key]
+        res_three = vals[0]
+        chain_seq_in_one = self.get_var_or_file(objects.dW, params, recalculate, True, False)
+        pos_to_aa = self.get_var_or_file(objects.eW, params, recalculate, True, False)
+        res_one = chain_seq_in_one[pos_to_aa[pos]]
+        assert(Polypeptide.three_to_one(res_three) == res_one)
+        return [vals[1], vals[3], vals[5], vals[7], vals[9]]
+
+
+class beW(obj_wrapper):
+
+    # ligsite feature
+    @dec
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+
+        sites = self.get_var_or_file(objects.bdW, params, recalculate, True, True, False)
+        num_pockets_to_consider = self.get_param(params, 'lgn')
+#        cutoff = self.get_param(params, 'lgc')
+        coords = self.get_var_or_file(objects.bgW, params, recalculate, True, False, False)
+        pos_to_aa = self.get_var_or_file(objects.eW, params, recalculate, True, False, False)
+        coord = coords[pos_to_aa[self.get_param(params, 'pos')]]
+        yes = 999
+        for i in range(num_pockets_to_consider):
+            pocket_coord = numpy.array(sites[i])
+            dist = global_stuff.physical_distance(coord - pocket_coord)
+
+            if dist  < yes:
+                yes = dist
+                
+        return [yes]
+        
+
+class bjW(obj_wrapper):
+
+    # mutual information networks feature
+    @dec
+    def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+
+        answers = self.get_var_or_file(objects.biW, params, recalculate, True, True, False)
+        pos_to_aa = self.get_var_or_file(objects.eW, params, recalculate, True, False, False)
+        return answers[pos_to_aa[self.get_param(params, 'pos')]]

@@ -1,6 +1,6 @@
 import constants
 import os
-import pickle
+import cPickle as pickle
 import pdb
 #import wrapper
 import subprocess
@@ -81,26 +81,26 @@ class object_cache_for_wrapper(object):
         elif self.pickle_dumper_wrapper.has(object_key, recalculate):
             assert recalculate == False
             f = self.pickle_dumper_wrapper.get(object_key, recalculate)
-            object = pickle.load(open(f.name, 'rb'))
-            return object
+            obj = pickle.load(open(f.name, 'rb'))
+            return obj
         raise KeyError
     
     # is it possible that set is called when the pickled object is accurate.  yes, only if you created the object, pickled, then deleted the used_keys and all_keys_cache pickles
     # self.pickle_wrapper where constructor makes the pickle.  params would include object_key and object
     #@print_stuff_dec
-    def set(self, object_key, object, to_pickle, params, to_filelize = False):
+    def set(self, object_key, object, to_pickle, params, to_filelize, always_recalculate = False):
         #print self.the_wrapper
         #pdb.set_trace()
         self.dump[object_key] = object
         if to_pickle: 
             #pdb.set_trace()
             # here, already stored reference to a wrapper instance.  so just call it directly.
-            temp_f = self.the_wrapper.old_get_var_or_file(self.pickle_dumper_wrapper, params, True, False, False, always_recalculate = False)
+            temp_f = self.the_wrapper.old_get_var_or_file(self.pickle_dumper_wrapper, params, True, False, False, always_recalculate)
         if to_filelize:
             #pdb.set_trace()
             assert self.file_dumper_wrapper != None
             #pdb.set_trace()
-            temp_f = self.the_wrapper.old_get_var_or_file(self.file_dumper_wrapper, params, True, False, False, always_recalculate = False)
+            temp_f = self.the_wrapper.old_get_var_or_file(self.file_dumper_wrapper, params, True, False, False, always_recalculate)
         return object
 
     # don't have to do anything to put the object in the cache

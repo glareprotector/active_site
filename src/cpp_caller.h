@@ -356,6 +356,7 @@ class cached_obj_getter: public cpp_caller{
     // call method
     PyObject* pResult = PyObject_CallFunctionObjArgs(pGetStuff, pWrapper, pParams, pRecalculate, pTo_Pickle, pTo_Filelize, pAlways_Recalculate, NULL);
     if(pResult == NULL){
+      py_print(pParams);
       cout<<"BAD"<<wrapper_name<<endl;
     }
     //py_print(pResult);

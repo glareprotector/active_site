@@ -7,18 +7,37 @@ from manager import *
 import string
 import Bio.PDB
 import csv
+import constants
+import string
+import re
+import math
+
+import pdb
+
 
 FILE_MANAGER_SIZE = 500
 OBJ_MANAGER_SIZE = 500
-MUSCLE_PATH = '/home/fultonw/muscle3.8.31_i86linux64'
+MUSCLE_PATH = '/mnt/work/fultonw/muscle3.8.31_i86linux64'
+DSSP_PATH = '/mnt/work/fultonw/active_site/dssp/dssp-2.0.4-linux-amd64'
 
 to_reindex = True
 recalculate = False
 
-the_obj_manager = obj_manager()
-the_file_manager = file_manager()
+recalculate_nodewise_loss_f = True
 
-BLAST_PATH = 'psiblast'
+metric_cutoffs = [1,2,3,4,5,6,7,8,9]
+
+
+
+
+RESULTS_FOLDER = '/home/fultonw/Dropbox/active_site/'
+
+
+NACCESS_PATH = '/mnt/work/fultonw/active_site/Naccess/naccess'
+NACCESS_FOLDER = '/mnt/work/fultonw/active_site/Naccess/'
+
+BLAST_PATH = '/mnt/work/fultonw/blast/ncbi-blast-2.2.26+/bin/psiblast'
+BLASTDB_PATH = '/mnt/work/fultonw/blast/ncbi-blast-2.2.26+/bin/nr/nr'
 CONSERVATION_FOLDER = '/home/fultonw/conservation_code/'
 
 ORIG_CHAINS = '../catres_pdbs'
@@ -27,7 +46,59 @@ CSA_FILE = '../catres_sites'
 success_file = 'success_catres.txt'
 fail_file = 'fail_catres.txt'
 
+proc_id = 0
 
+def get_aux_folder(pdb_name, chain_letter):
+    return constants.AUX_FOLDER + string.lower(pdb_name) + ':' + string.upper(chain_letter) + '/'
+
+
+def shorten(x):
+    x = re.sub(r'\'','',x)
+    x = re.sub(r'class','',x)
+    x = re.sub(r' ','',x)
+    return x
+
+    
+
+def get_KL(d1, d2):
+
+    # keep dictionary of counts for each distribution
+    d1_dict = {}
+    for i in range(len(d1)):
+        if d1[i] in d1_dict.keys():
+            d1_dict[d1[i]] = d1_dict[d1[i]] + 1
+        else:
+            d1_dict[d1[i]] = 1
+    for k in d1_dict.keys():
+        d1_dict[k] = float(d1_dict[k]) / float(len(d1))
+ #   pdb.set_trace()
+    d2_dict = {}
+    for i in range(len(d2)):
+        if d2[i] in d2_dict.keys():
+            d2_dict[d2[i]] = d2_dict[d2[i]] + 1
+        else:
+            d2_dict[d2[i]] = 1
+    for k in d2_dict.keys():
+        d2_dict[k] = float(d2_dict[k]) / float(len(d2))
+#    pdb.set_trace()
+    # add pseudocounts for d2
+    for k in d1_dict.keys():
+        if k in d2_dict.keys():
+            d2_dict[k] = d2_dict[k] + 1
+        else:
+            d2_dict[k] = 1
+    ans = 0
+    for k in d1_dict.keys():
+        if d1_dict[k] > 0:
+            ans += d1_dict[k] * math.log(d1_dict[k] / d2_dict[k])
+    return ans
+
+
+def physical_distance(x):
+    norm = 0;
+    for i in range(len(x)):
+        norm = norm + x[i] * x[i]
+    return math.sqrt(norm)
 
 def print_stuff_dec(f):
 
@@ -78,7 +149,7 @@ def write_mat(mat, f_name, the_sep = ',', option = 'w'):
 
 def write_vect(vect, f_name, the_sep = ',', option = 'w'):
     f = open(f_name, option)
-    line = string.join([str(x) for x in row], sep=the_sep)
+    line = string.join([str(x) for x in vect], sep=the_sep)
     f.write(line)
     f.close()
 
@@ -123,3 +194,5 @@ def get_representative_atom(res):
         print 'no CA or CB atom in residue'
             #pdb.set_trace()
         return res.child_list[0]
+
+a = 2

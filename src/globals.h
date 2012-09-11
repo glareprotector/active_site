@@ -9,6 +9,7 @@
 //#define SERIAL
 #define PARAM
 
+
 namespace globals{
   
   string data_folder;
@@ -23,9 +24,9 @@ namespace globals{
   double eps;
   PyObject* pParams;
   bool recalculate;
-  
+  bool recalculate_nodewise_loss_f;
 
-
+  int fdsa;
   
 
 
@@ -49,6 +50,7 @@ namespace globals{
     which_obj = 0;
     which_infer = 0;
     eps = 1.11e-16;
+    fdsa = 160;
   }
 
 }

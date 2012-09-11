@@ -106,6 +106,8 @@ class sample{
 
   arbi_array<num> get_feature_values(arbi_array<int> states);
 
+  void get_marginals_logistic_regression(arbi_array<num> node_potentials, arbi_array<num>& node_marginals);
+
 
   void get_dPot_dTheta(arbi_array<num> theta, arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& dNode, arbi_array<num>& dEdge);
 

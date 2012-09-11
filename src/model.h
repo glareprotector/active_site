@@ -52,6 +52,7 @@ class model{
   num reg_constant;
   int which_obj;
   int which_infer;
+  int which_reg;
 
   string results_folder;
 

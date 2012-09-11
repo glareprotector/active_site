@@ -60,6 +60,7 @@ arbi_array<T> arbi_array<T>::operator+(const arbi_array<T>& ar){
   return ans;
 }
 
+
 template <class T>
 void arbi_array<T>::write(string file_name, char sep = ','){
   ofstream myfile;
@@ -198,17 +199,29 @@ inline T& arbi_array<T>::operator()(...){
   pos = 0;  
 
   if(dim == 1){
-    return this->m_data[va_arg(iter,int)];
+    int pos1 = va_arg(iter,int);
+    assert(pos1 < size(0));
+    return this->m_data[pos1];
   }
   if(dim == 2){
-    pos += this->shift_lengths[0] * va_arg(iter,int);
-    pos += this->shift_lengths[1] * va_arg(iter,int);
+    int pos1 = va_arg(iter,int);
+    int pos2 = va_arg(iter,int);
+    assert(pos1 < size(0));
+    assert(pos2 < size(1));
+    pos += this->shift_lengths[0] * pos1;
+    pos += this->shift_lengths[1] * pos2;
     return this->m_data[pos];
   }
   if(dim == 3){
-    pos += this->shift_lengths[0] * va_arg(iter,int);
-    pos += this->shift_lengths[1] * va_arg(iter,int);
-    pos += this->shift_lengths[2] * va_arg(iter,int);
+    int pos1 = va_arg(iter,int);
+    int pos2 = va_arg(iter,int);
+    int pos3 = va_arg(iter,int);
+    assert(pos1 < size(0));
+    assert(pos2 < size(1));
+    assert(pos3 < size(2));
+    pos += this->shift_lengths[0] * pos1;
+    pos += this->shift_lengths[1] * pos2;
+    pos += this->shift_lengths[2] * pos3;
     return this->m_data[pos];
   }
 

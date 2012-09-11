@@ -37,7 +37,7 @@ roc = roc[[1]]
 
 roc_title_string = paste("iter:", iter_string, "obj:", obj_str, "roc", format(roc, digits=4), Sys.time(), sep = " ")
 
-plot(perf, main = roc_title_string)
+plot(perf, main = roc_title_string, ylim=c(0,1))
 
 perf = performance(pred,"prec","rec")
 xx = perf@x.values
@@ -45,12 +45,18 @@ yy = perf@y.values
 xx = unlist(xx)
 yy = unlist(yy)
 yy[1] = 1
-f = approxfun(xx,yy)
-area_prec_rec = integrate(f,0,1)$value
+#f = approxfun(xx,yy)
+#area_prec_rec = integrate(f,0,1)$value
+area_prec_rec = 0
 
 precrec_title_string = paste("iter", iter_string, "obj:", obj_str, "prec_rec", format(area_prec_rec, digits=4), Sys.time(), sep = " ")
 
-plot(perf, main = precrec_title_string)
+plot(perf, main = precrec_title_string, ylim=c(0,1))
+
+
+alt_input_file = args[4]
+data_alt = 
+
 
 
 dev.off()

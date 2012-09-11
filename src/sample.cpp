@@ -26,7 +26,6 @@ sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> 
   this->num_nodes = _node_features.size(0);
   this->num_edges = _edge_features.size(0);
   this->true_states = _true_states;
-  cout<<true_states<<endl;
   this->folder = _folder;
   this->pdb_name = _pdb_name;
   this->chain_letter = _chain_letter;
@@ -59,6 +58,7 @@ sample::sample(model* _p_model, arbi_array<num> _node_features, arbi_array<num> 
   //this->node_marginals = arbi_array<num>(2, this->num_nodes, _p_model->num_states);
   //this->edge_marginals = arbi_array<num>(3, this->num_edges, _p_model->num_states, _p_model->num_states);
   this->times_called = 0;
+
 }
 
 
@@ -102,6 +102,8 @@ void sample::simulate_states(arbi_array<num> f_theta){
 
 arbi_array<num> sample::get_node_potentials(arbi_array<num> theta){
   arbi_array<num> node_potentials(2, num_nodes, p_model->num_states);
+
+  node_potentials.fill(0);
   for(int i = 0; i < num_nodes; i++){
     //cout<<i<<" "<<node_features(i,3)<<endl;
     for(int j = 0; j < p_model->num_states; j++){
@@ -111,12 +113,34 @@ arbi_array<num> sample::get_node_potentials(arbi_array<num> theta){
 	//cout<<temp<<" ";
 	//if(i == num_nodes-1 && j == 0){
 	//if(k == p_model->num_node_features - 1 && j == 0){
-	//  cout<<k<<' '<<node_features(i,k)<<' '<<theta(p_model->node_map(j,k))<<' '<<temp<<" "<<num_nodes<<" "<<i<<" "<<node_features.size(0)<<" "<<node_features.size(1)<<endl;
+	//	  cout<<k<<' '<<node_features(i,k)<<' '<<theta(p_model->node_map(j,k))<<' '<<temp<<" "<<num_nodes<<" "<<i<<" "<<node_features.size(0)<<" "<<node_features.size(1)<<endl;
 	//}
       }
+      //cout<<"nodepot: "<<proc_id<<" "<<i<<" "<<j<<temp<<endl;
       node_potentials(i,j) = temp;
+      if(isfinite(temp) == false){
+	for(int k = 0; k < p_model->num_node_features; k++){
+	  //cout<<"POPOPOPOPOPOPOPOPPOPO: "<<k<<' '<<node_features(i,k)<<' '<<theta(p_model->node_map(j,k))<<' '<<temp<<" "<<num_nodes<<" "<<i<<" "<<node_features.size(0)<<" "<<node_features.size(1)<<endl;
+	}
+	//cout<<node_potentials<<endl;
+	assert(false);
+	//exit(1);
+      }
+      if(isfinite(temp) == false){
+
+	for(int k = 0; k < p_model->num_node_features; k++){
+	  cout<<k<<' '<<node_features(i,k)<<' '<<' '<<temp<<" "<<num_nodes<<" "<<i<<" "<<node_features.size(0)<<" "<<node_features.size(1)<<endl;
+	}
+	//cout<<node_potentials<<endl;
+	assert(false);
+	exit(1);
+      }
     }
   }
+
+  //cout<<"INSIDENODEPOTENTIALS INTEREST"<<proc_id<<" "<<pdb_name<<" "<<node_potentials(globals::fdsa,0)<<" "<<node_potentials(globals::fdsa,1);
+
+
   //cout<<endl<<"FFFFF "<<node_features(num_nodes-1, p_model->num_node_features-1)<<endl;
   //cout<<node_features<<endl;
   //cout<<node_potentials<<endl;
@@ -132,8 +156,16 @@ arbi_array<num> sample::get_edge_potentials(arbi_array<num> theta){
 	num temp = 0;
 	for(int l = 0; l < p_model->num_edge_features; l++){
 	  temp = temp + edge_features(i,l) * theta(p_model->edge_map(j,k,l));
+	  //cout<<edge_features(i,l)<<" "<<theta(p_model->edge_map(j,k,l))<<endl;
 	}
 	edge_potentials(i,j,k) = temp;
+	if(isfinite(edge_potentials(i,j,k)) == false){
+	  cout<<edge_features(i,0)<<" "<<theta(p_model->edge_map(j,k,0))<<" "<<p_model->edge_map(j,k,0)<<endl;
+	  cout<<edge_features(i,1)<<" "<<theta(p_model->edge_map(j,k,1))<<" "<<p_model->edge_map(j,k,1)<<endl;
+	  cout<<theta<<endl;
+	  cout<<"quitting"<<endl;
+	  assert(false);
+	}
       }
     }
   }
@@ -141,16 +173,39 @@ arbi_array<num> sample::get_edge_potentials(arbi_array<num> theta){
 }
 
 void sample::get_marginals(arbi_array<num> theta, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals){
+  //cout<<"\n\n\n\n\n\nthetehtehtehtehth: "<<endl<<theta<<endl;
+  //  exit(1);
+
+
+
+  //cout<<"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF "<<theta<<endl;
+  #ifndef SERIAL
+  
+  #endif
 
   arbi_array<num> node_potentials = get_node_potentials(theta);
   arbi_array<num> edge_potentials = get_edge_potentials(theta);
+  //cout<<"INTEREST NONE: "<<proc_id<<" "<<pdb_name<<" "<<node_potentials(globals::fdsa,0)<<" "<<node_potentials(globals::fdsa,1)<<endl;
   get_marginals(node_potentials, edge_potentials, node_marginals, edge_marginals);
+
+  #ifndef SERIAL
+  
+  #endif
+
+  //cout<<"GETMARGINALSWITHTHETA "<<proc_id<<" "<<pdb_name<<endl;
 
 }
 
 // which infer method to used is stored in model
 void sample::get_marginals(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals){
   //cout<<"which_infer: "<<p_model->which_infer<<endl;
+
+
+  //cout<<"\nGETMARGINALSWITHPOTPOTPOTPOTPOTPOTPOT "<<proc_id<<" "<<pdb_name<<endl;
+
+  //cout<<"INTEREST11: "<<proc_id<<" "<<pdb_name<<" "<<node_potentials(globals::fdsa,0)<<" "<<node_potentials(globals::fdsa,1)<<endl;
+
+
   switch(p_model->which_infer){
   case 0:
     get_marginals_mean_field(node_potentials, edge_potentials, node_marginals, edge_marginals);
@@ -158,6 +213,8 @@ void sample::get_marginals(arbi_array<num> node_potentials, arbi_array<num> edge
   case 1:
     get_marginals_BP(node_potentials, edge_potentials, node_marginals, edge_marginals);
     break;
+  case 2:
+    get_marginals_logistic_regression(node_potentials, node_marginals);
   }
   /*
   //cout<<node_marginals<<endl;
@@ -176,19 +233,10 @@ void sample::get_marginals(arbi_array<num> node_potentials, arbi_array<num> edge
   */
 }
 
-// storing marginals in regular non-log form
-// not assuming that node_marginals and edge_marginals are pre-allocated
-void sample::get_marginals_mean_field(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals){
 
-  //cout<<node_potentials<<endl;
-
-  // allocate node_marginals and edge_marginals
-  node_marginals = arbi_array<num>(2, num_nodes, p_model->num_states);
-  edge_marginals = arbi_array<num>(3, num_edges, p_model->num_states, p_model->num_states);
-
-  arbi_array<num> log_new_marginals(1,p_model->num_states);
-
+void sample::get_marginals_logistic_regression(arbi_array<num> node_potentials, arbi_array<num>& node_marginals){
   // set initial marginals to normalized potentials
+  node_marginals = arbi_array<num>(2, num_nodes, p_model->num_states);
   for(int i = 0; i < num_nodes; i++){
     num log_sum = 0;
     for(int j = 0; j < p_model->num_states; j++){      
@@ -208,9 +256,84 @@ void sample::get_marginals_mean_field(arbi_array<num> node_potentials, arbi_arra
 
     for(int j = 0; j < p_model->num_states; j++){
       node_marginals(i,j) /= norm;
+      if(isfinite(node_marginals(i,j)) == false){
+	cout<<"GGG "<<pdb_name<<endl;
+	//cout<<node_marginals<<endl;
+	cout<<"SEPEPEPEPEP"<<endl;
+	cout<<node_potentials<<endl;
+	assert(false);
+	exit(1);
+      }
+    }
+   
+  }
+  //cout<<node_marginals<<endl;
+  //exit(1);
+}
+
+
+// storing marginals in regular non-log form
+// not assuming that node_marginals and edge_marginals are pre-allocated
+void sample::get_marginals_mean_field(arbi_array<num> node_potentials, arbi_array<num> edge_potentials, arbi_array<num>& node_marginals, arbi_array<num>& edge_marginals){
+
+
+
+
+
+  
+
+
+  // allocate node_marginals and edge_marginals
+  node_marginals = arbi_array<num>(2, num_nodes, p_model->num_states);
+  edge_marginals = arbi_array<num>(3, num_edges, p_model->num_states, p_model->num_states);
+
+  arbi_array<num> log_new_marginals(1,p_model->num_states);
+
+  // set initial marginals to normalized potentials
+  for(int i = 0; i < num_nodes; i++){
+    num log_sum = 0;
+    for(int j = 0; j < p_model->num_states; j++){      
+      if(j == 1){
+	log_sum = LogScore_ADD(get_node_potential(node_potentials,i,0), get_node_potential(node_potentials,i,1));
+      }
+      if(j > 1){
+	LogScore_PLUS_EQUALS(log_sum, get_node_potential(node_potentials,i,j));
+      }
+    }
+    
+    num norm = 0;
+    for(int j = 0; j < p_model->num_states; j++){
+      node_marginals(i,j) = exp(get_node_potential(node_potentials,i,j) - log_sum);
+      norm += node_marginals(i,j);
+    }
+
+    //cout<<proc_id<<" "<<i<<" norm "<<norm<<" "<<node_marginals(i,0)<<" "<<node_marginals(i,1)<<" "<<node_potentials(i,0)<<" "<<node_potentials(i,1)<<endl;
+    
+    for(int j = 0; j < p_model->num_states; j++){
+      node_marginals(i,j) /= norm;
     }
 
   }
+
+
+
+   for(int i = 0; i < num_nodes; i++){
+    for(int j = 0; j < p_model->num_states; j++){
+      if(!isfinite(node_marginals(i,j))){
+	cout<<node_marginals<<endl<<"before"<<endl;
+	cout<<node_marginals(i,j)<<endl;
+	for(int k = 0; k < p_model->num_node_features; k++){
+	  cout<<node_features(i,k)<<" ";
+	}
+	cout<<endl;
+	cout<<"proc_id: "<<proc_id<<" "<<i<<" "<<j<<endl;
+	assert(false);
+      }
+
+    }
+  }
+
+
 
   for(int i = 0; i < p_model->mean_field_max_iter; i++){
     for(int j = 0; j < num_nodes; j++){
@@ -272,10 +395,18 @@ void sample::get_marginals_mean_field(arbi_array<num> node_potentials, arbi_arra
       if(!isfinite(node_marginals(i,j))){
 	cout<<"AAAAAAAAAAAAAAAA"<<proc_id<<endl;
       }
-      assert(isfinite(node_marginals(i,j)));
     }
   }
+  
+  for(int i = 0; i < num_nodes; i++){
+    for(int j = 0; j < p_model->num_states; j++){
+      if(!isfinite(node_marginals(i,j))){
+	cout<<node_marginals<<endl;
+	assert(false);
+      }
 
+    }
+  }
   
   // set edge marginals
   for(int i = 0; i < num_edges; i++){
@@ -395,6 +526,9 @@ num sample::get_log_Z(arbi_array<num> node_potentials, arbi_array<num> edge_pote
     for(int j = 0; j < p_model->num_states; j++){
       if(!isfinite(node_marginals(i,j))){
 	cout<<i<<" "<<j<<" "<<node_marginals(i,j)<<endl;
+	cout<<this->node_features<<endl;
+	cout<<node_marginals<<endl;
+	cout<<pdb_name<<" "<<pdb_name<<endl;
 	assert(false);
       }
       energy -= node_marginals(i,j) * get_node_potential(node_potentials, i,j);
@@ -419,6 +553,17 @@ num sample::get_log_Z(arbi_array<num> node_potentials, arbi_array<num> edge_pote
       }
     }
   }
+  /*
+  for(int i = 0; i < num_edges; i++){
+    for(int j = 0; j < p_model->num_states; j++){
+      for(int k = 0; k < p_model->num_states; k++){
+	if(edge_marginals(i,j,k) > 1e-80){
+	  entropy -= edge_marginals(i,j,k) * log(edge_marginals(i,j,k));
+	}
+      }
+    }
+  }*/
+
   assert(isfinite(entropy));
   assert(isfinite(energy));
   num af = 0;
@@ -453,6 +598,9 @@ num sample::get_data_potential(arbi_array<num> node_potentials, arbi_array<num> 
 
 // returns negative log likelihood
 num sample::get_data_likelihood(arbi_array<num> theta){
+
+
+
 
   //cout<<"333333333333"<<theta<<endl;
   arbi_array<num> node_potentials = get_node_potentials(theta);
@@ -523,6 +671,7 @@ num sample::get_data_likelihood(arbi_array<num> theta){
 }
 
 num sample::get_L(int which_obj, arbi_array<num>& theta){
+
   num temp = 0;
   for(int i = 0; i < theta.size(0); i++){
     temp += theta(i);
@@ -545,11 +694,14 @@ num sample::get_L(int which_obj, arbi_array<num>& theta){
 }
 
 num sample::smooth_f(num x){
+  //return exp(x);
+  return -1.0 / (1.0 + x*x);
   return x*x;
   return exp(x*x);
 }
 
 num sample::get_L_pseudo(arbi_array<num> theta){
+
   arbi_array<num> node_pseudos;
   pseudo_likelihood_helper(theta, node_pseudos);
   num L = 0;
@@ -569,27 +721,61 @@ num sample::get_L_pseudo(arbi_array<num> theta){
 
 num sample::get_L_nodewise(arbi_array<num> theta){
 
+  // set param
+  cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name, globals::STRING_TYPE);
+  cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter, globals::STRING_TYPE);
+
+
   num loss = 0;
   arbi_array<num> node_marginals, edge_marginals;
+  //cout<<"NODEWISE "<<proc_id<<" "<<pdb_name<<endl;
   get_marginals(theta, node_marginals, edge_marginals);
+
+  //cout<<"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB "<<proc_id<<" theta: "<<theta<<endl;
+
+
+  PyObject* pFakeTrueNum = cached_obj_getter::call_wrapper(string("new_new_objects"), string("bhW"), globals::pParams, globals::recalculate, true, true, false);
+  arbi_array<num> fake_true_num = cpp_caller::py_float_list_to_cpp_num_vect(pFakeTrueNum);
+  Py_DECREF(pFakeTrueNum);
   for(int i = 0; i < num_nodes; i++){
     arbi_array<int> sorted_pos;
     arbi_array<num> sorted_distances;
     //sorted_distances_getter::get(pdb_name, chain_letter, i, sorted_pos, sorted_distances);
-    loss += smooth_f(node_marginals(i,1) - true_states(i));
+    //cout<<i<<" "<<loss<<endl;
+    loss += smooth_f(node_marginals(i,1) - fake_true_num(i));
   }
-
+  if(isfinite(loss) == false){
+    cout<<node_marginals<<endl;
+    cout<<fake_true_num<<endl;
+    cout<<theta<<endl;
+    cout<<pdb_name<<endl;
+    exit(1);
+  }
   return loss;
 }
 
 void sample::get_dL_dMu_nodewise(arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num>& dL_dNode_Mu, arbi_array<num>& dL_dEdge_Mu){
+
+
+  // set param for pdb_name
+  cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name, globals::STRING_TYPE);
+  cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter, globals::STRING_TYPE);
+
+
   dL_dNode_Mu = arbi_array<num>(2, num_nodes, 2);
   dL_dNode_Mu.fill(0);
+  PyObject* pFakeTrueNum = cached_obj_getter::call_wrapper(string("new_new_objects"), string("bhW"), globals::pParams, globals::recalculate, true, true, false);
+  arbi_array<num> fake_true_num = cpp_caller::py_float_list_to_cpp_num_vect(pFakeTrueNum);
+  Py_DECREF(pFakeTrueNum);
   for(int i = 0; i < num_nodes; i++){
-    dL_dNode_Mu(i,1) = d_smooth_f(node_marginals(i,1) - true_states(i));
+    dL_dNode_Mu(i,1) = d_smooth_f(node_marginals(i,1) - fake_true_num(i));
     //dL_dNode_Mu(i,0) = -1.0 * dL_dNode_Mu(i,1);
   }
-
+  //cout<<"\nDLDMU: "<<proc_id<<" "<<pdb_name<<dL_dNode_Mu(globals::fdsa,0)<<" "<<dL_dNode_Mu(globals::fdsa,1)<<" "<<node_marginals(globals::fdsa,1)<<" "<<fake_true_num(globals::fdsa)<<endl;
+  //cout<<"\nfake true: "<<proc_id<<" faketruesize: "<<fake_true_num.size(0)<<endl;
+  for(int i = 0; i < num_nodes; i++){
+    //cout<<proc_id<<i<<" "<<fake_true_num(i)<<endl;
+  }
   //cout<<endl<<"DLDMU"<<endl;
   //cout<<dL_dNode_Mu<<endl;
   dL_dEdge_Mu = arbi_array<num>(3, num_edges, 2, 2);
@@ -598,88 +784,149 @@ void sample::get_dL_dMu_nodewise(arbi_array<num> node_marginals, arbi_array<num>
 }
 
 num sample::get_L_expected_distance(arbi_array<num> theta){
-  /*
+
+
+  //exit(1);
   num loss = 0;
   arbi_array<num> node_marginals;
   arbi_array<num> edge_marginals;
   get_marginals(theta, node_marginals, edge_marginals);
+
+
+  cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name, globals::STRING_TYPE);
+  cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter, globals::STRING_TYPE);
+
+  //  PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("apW"), globals::pParams, globals::recalculate, false, false, false);
+  PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("apW"), globals::pParams, globals::recalculate, false, false, false);
+
+  PyObject* pSorted_Dist = PyList_GetItem(pResult, 0);
+  PyObject* pSorted_Pos = PyList_GetItem(pResult, 1);
+  arbi_array<num> sorted_distances = cpp_caller::py_float_mat_to_cpp_num_mat(pSorted_Dist);
+  arbi_array<int> sorted_pos = cpp_caller::py_int_mat_to_cpp_int_mat(pSorted_Pos);
+  Py_DECREF(pResult);
+
+
+
+  PyObject* pClosests = cached_obj_getter::call_wrapper(string("new_new_objects"), string("aqW"), globals::pParams, globals::recalculate, false, false, false);
+  arbi_array<num> closest_dists = cpp_caller::py_float_list_to_cpp_num_vect(pClosests);
+  
+
+
+  Py_DECREF(pClosests);
+
+
+
   for(int i = 0 ; i < num_nodes; i++){
-    arbi_array<num> sorted_distances;
-    arbi_array<int> sorted_pos;
-    sorted_distances_getter::get(pdb_name, chain_letter, i, sorted_pos, sorted_distances);
+    
+    //    cout<<"loss: "<<i<<endl;
+
+
+    
+
+
     // starting at position 0 to next to last, height from i(noninclusive) to i+1 is p(0 to i all not active).  so multiple the height by width which is d(i+1) - d(i)
     num cumulative = 1.0;
     num exp_val = 0;
-    num closest_site_dist = -1;
-    for(int j = 1; j < num_nodes; j++){
-      cumulative *= node_marginals(sorted_pos(j-1), 0);
-      exp_val += cumulative * (sorted_distances(j) - sorted_distances(j-1));
+    num closest_site_dist = closest_dists(i);
+
+    for(int j = 1; j < sorted_distances.size(1); j++){
+      cumulative *= node_marginals(sorted_pos(i,j-1), 0);
+      exp_val += cumulative * (sorted_distances(i,j) - sorted_distances(i,j-1));
     }
-    // find closest site
-    for(int j = 0; j < num_nodes; j++){
-      if(true_states(sorted_pos(j)) == 1){
-	closest_site_dist = sorted_distances(sorted_pos(j));
-	break;
-      }
-    }
-    // is it safe to assume that every chain has at least one active site?  if not, set "true" closest distance to some big number
-    assert(closest_site_dist != -1);
-    //cout<<exp_val<<" "<<closest_site_dist<<endl;
+
     loss += smooth_f(fabs(exp_val - closest_site_dist));
+
   }
-  return loss;*/
-  return 2.0;
+
+  return loss;
+
+
+
+
+
 }
 
 num sample::d_smooth_f(num x){
+  //return exp(x);
+  return 2*x / ((x*x + 1) * (x*x + 1));
   return 2.0 * x;
   return exp(x*x) * 2.0 * x;
 }
       
 void sample::get_dL_dMu_expected_distance(arbi_array<num> node_marginals, arbi_array<num> edge_marginals, arbi_array<num>& dL_dNode_Mu, arbi_array<num>& dL_dEdge_Mu){
-  /*
+
+
+
+
   assert(p_model->num_states == 2);
   dL_dNode_Mu = arbi_array<num>(2, num_nodes, 2);
   dL_dNode_Mu.fill(0);
+
+
+  cpp_caller::set_param(globals::pParams, string("pdb_name"), &pdb_name, globals::STRING_TYPE);
+  cpp_caller::set_param(globals::pParams, string("chain_letter"), &chain_letter, globals::STRING_TYPE);
+
+  //PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("apW"), globals::pParams, globals::recalculate, false, false, false);
+  PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("apW"), globals::pParams, globals::recalculate, false, false, false);
+
+  PyObject* pSorted_Dist = PyList_GetItem(pResult, 0);
+  PyObject* pSorted_Pos = PyList_GetItem(pResult, 1);
+
+  arbi_array<num> sorted_distances = cpp_caller::py_float_mat_to_cpp_num_mat(pSorted_Dist);
+  arbi_array<int> sorted_pos = cpp_caller::py_int_mat_to_cpp_int_mat(pSorted_Pos);
+  Py_DECREF(pResult);
+
+  PyObject* pClosests = cached_obj_getter::call_wrapper(string("new_new_objects"), string("aqW"), globals::pParams, globals::recalculate, false, false, false);
+  arbi_array<num> closest_dists = cpp_caller::py_float_list_to_cpp_num_vect(pClosests);
+  Py_DECREF(pClosests);
+
   
   for(int i = 0; i < num_nodes; i++){
-    arbi_array<num> sorted_distances;
-    arbi_array<int> sorted_pos;
-    sorted_distances_getter::get(pdb_name, chain_letter, i, sorted_pos, sorted_distances);
+        
+    //    cout<<"loss grad: "<<i<<endl;
+    
+
+
+
     num cumulative = 1.0;
-    num temp, closest_site_dist = -1;
-    // find closest site
-    for(int j = 0; j < num_nodes; j++){
-      if(true_states(sorted_pos(j)) == 1){
-	closest_site_dist = sorted_distances(sorted_pos(j));
-	break;
-      }
-    }
-    assert(closest_site_dist != -1);
+    num temp;
+
+    num closest_site_dist = closest_dists(i);
+
+
+
     // for each term in summation for the site, calculate gradient (will be 0 for sites further away)
     num inside = 0;
     arbi_array<num> node_seconds(1, num_nodes);
     node_seconds.fill(0.0);
-    for(int j = 1; j < num_nodes; j++){
-      cumulative *= node_marginals(sorted_pos(j-1), 0);
-      temp = (sorted_distances(j) - sorted_distances(j-1)) * cumulative;
+
+
+
+    for(int j = 1; j < sorted_pos.size(1); j++){
+      cumulative *= node_marginals(sorted_pos(i,j-1), 0);
+      temp = (sorted_distances(i,j) - sorted_distances(i,j-1)) * cumulative;
       inside += temp;
       assert(temp >= 0);
       for(int k = 0; k < j; k++){
-	node_seconds(sorted_pos(k)) += temp / node_marginals(sorted_pos(k), 0);
+	node_seconds(sorted_pos(i,k)) += temp / node_marginals(sorted_pos(i,k), 0);
       }      
     }
+    //cout<<node_seconds<<endl;
     node_seconds.scale(d_smooth_f(inside - closest_site_dist));
     for(int j = 0; j < num_nodes; j++){
       dL_dNode_Mu(j,0) += node_seconds(j);
     }
+
+
   }
 
   // loss function doesn't depend on edge marginals, so dL_Edge_dMu should be zeros
   dL_dEdge_Mu = arbi_array<num>(3, num_edges, 2, 2);
   dL_dEdge_Mu.fill(0);
-  */
-  int x;
+  
+
+  
+
 }
       
 	
@@ -897,7 +1144,7 @@ void sample::get_marginals_BP(arbi_array<num> node_potentials, arbi_array<num> e
   (*new_msgs).fill(1.0);
   times_called++;
   */
-  
+
   if(times_called == 0){
     msgs1 = arbi_array<num> (3, num_edges, 2, p_model->num_states);
     msgs2 = arbi_array<num> (3, num_edges, 2, p_model->num_states);
@@ -911,7 +1158,7 @@ void sample::get_marginals_BP(arbi_array<num> node_potentials, arbi_array<num> e
   //cout<<(*new_msgs)<<endl;
   times_called++;
   //(*old_msgs).fill(0.0);
-  int bp_max_iter = 100;
+  int bp_max_iter = 15;
   for(int i = 0; i < bp_max_iter; i++){
     swap(old_msgs, new_msgs);
     for(int j = 0; j < num_edges; j++){
@@ -923,6 +1170,7 @@ void sample::get_marginals_BP(arbi_array<num> node_potentials, arbi_array<num> e
       for(int k = 0; k < p_model->num_states; k++){
 	get_message(*new_msgs, node1, node2, k) = 0;
 	for(int l = 0; l < p_model->num_states; l++){
+	  //	  cout<<get_edge_potential(edge_potentials, node1,node2,l,k);
 	  num temp = exp(get_edge_potential(edge_potentials, node1,node2,l,k) + node_potentials(node1,l));
 	  for(int m = 0; m < node1_nbrs.size(0); m++){
 	    int nbr = node1_nbrs(m);
@@ -1010,14 +1258,14 @@ void sample::get_marginals_BP(arbi_array<num> node_potentials, arbi_array<num> e
 	arbi_array<int> node1_neighbors = node_to_neighbors(node1);
 	arbi_array<int> node2_neighbors = node_to_neighbors(node2);
 	for(int l = 0; l < node1_neighbors.size(0); l++){
-	  //if(l != node2){
+	  if(l != node2){
 	    temp *= get_message(*new_msgs, node1_neighbors(l), node1, j);
-	    // }
+	     }
 	}
 	for(int l = 0; l < node2_neighbors.size(0); l++){
-	  //if(l != node1){
+	  if(l != node1){
 	    temp *= get_message(*new_msgs, node2_neighbors(l), node2, k);
-	    // }
+	     }
 	}
 	edge_marginals(i,j,k) = temp;
 	sum += temp;
@@ -1053,6 +1301,12 @@ arbi_array<num> sample::get_dL_dTheta_Perturb(int which_obj, arbi_array<num> the
   arbi_array<num> edge_potentials = get_edge_potentials(theta);
   arbi_array<num> node_marginals;
   arbi_array<num> edge_marginals;
+
+
+
+  //cout<<"\nINSIDENODEPOTENTIALSPERTURB INTEREST "<<proc_id<<" "<<pdb_name<<" "<<node_potentials(globals::fdsa,0)<<" "<<node_potentials(globals::fdsa,1);
+
+
   get_marginals(node_potentials, edge_potentials, node_marginals, edge_marginals);
   arbi_array<num> dL_dNode_Mu;
   arbi_array<num> dL_dEdge_Mu;
@@ -1087,6 +1341,11 @@ arbi_array<num> sample::get_dL_dTheta_Perturb(int which_obj, arbi_array<num> the
   arbi_array<num> perturbed_edge_potentials = edge_potentials + dL_dEdge_Mu;
   arbi_array<num> perturbed_node_marginals;
   arbi_array<num> perturbed_edge_marginals;
+
+  //cout<<"\nPERTURB POTENTIAL SICK"<<proc_id<<" "<<pdb_name<<" "<<perturbed_node_potentials(globals::fdsa,0)<<" "<<perturbed_node_potentials(globals::fdsa,1)<<" "<<dL_dNode_Mu(globals::fdsa,0)<<" "<<dL_dNode_Mu(globals::fdsa,1)<<endl;
+  
+
+
   get_marginals(perturbed_node_potentials, perturbed_edge_potentials, perturbed_node_marginals, perturbed_edge_marginals);
   
   //cout<<endl<<"perturbed node marginals"<<endl;

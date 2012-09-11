@@ -1,8 +1,10 @@
 from param import param
 
-import pdb, os, subprocess, constants, pickle
+import pdb, os, subprocess, constants
+import cPickle as pickle
 from global_stuff import print_stuff_dec, write_mat, write_vect
 
+from Bio import AlignIO
 
 import caches
 from wrapper_decorator import *
@@ -133,10 +135,18 @@ class always_recalculate_wrapper(wrapper):
 class by_pdb_folder_wrapper(wrapper):
 
     def get_folder(self, object_key):
-        return constants.BIN_FOLDER + '/' + object_key.get_param('pdb_name') + '/'
+        return constants.BIN_FOLDER  + object_key.get_param('pdb_name') + '/'
 
     def specificity(self):
         return 'chain'
+
+class experiment_results_wrapper(wrapper):
+
+    def get_folder(self, object_key):
+        #return constants.BIN_FOLDER + 'experiment_results/'
+        return global_stuff.RESULTS_FOLDER
+
+
 
 class indexing_wrapper(wrapper):
 
@@ -151,7 +161,7 @@ class indexed_wrapper(wrapper):
 class obj_wrapper(wrapper):
 
     def get_file_dumper(self, maker, params):
-        return default_file_dumper_wrapper(maker, params)
+        return dfdW(maker, params)
 
     def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key) + '.pk'
@@ -173,6 +183,11 @@ class vect_obj_wrapper(obj_wrapper):
         return generic_vect_file_dumper_wrapper(maker, params)
         maker.set_param(params, "which_wrapper_class", wrapper.generic_vect_file_dumper_wrapper)
         return maker.get_var_or_file(wrapper_catalog, params, True, False, False)
+
+class msa_obj_wrapper(obj_wrapper):
+
+    def get_file_dumper(self, maker, params):
+        return dadW(maker, params)
 
 class file_wrapper(wrapper):
 
@@ -210,7 +225,7 @@ class generic_dumper_wrapper(file_wrapper):
     def before_init(self, maker, params):
         return maker, params
 
-    def dump_object(self, object):
+    def dump_object(self, obj):
         pass
 
     def get_folder(self, object_key):
@@ -222,37 +237,47 @@ class generic_dumper_wrapper(file_wrapper):
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
         #pdb.set_trace()
         assert to_pickle == False
-        assert recalculate == True
+        #assert recalculate == True
+        # manually set always_recalculate to false here
+        # always_recalculate = False
+        # if always recalculate is true, have option here to set always_recalculate to be true.  where to decide this?  could be property of source_wrapper.
+        # if you call dumper directly, if always_recalculate was already true, then recalculate should be true here.  if was part of caching, and always_recalculate is True, it should be changed to false here
+        if always_recalculate:
+            if always_recalculate != 2:
+                always_recalculate = False
+        obj = self.old_get_var_or_file(self.source_wrapper, params, True, to_pickle, to_filelize, always_recalculate)
+        self.dump_object(obj)
 
-        object = self.old_get_var_or_file(self.source_wrapper, params, global_stuff.recalculate, to_pickle, to_filelize, always_recalculate)
-        self.dump_object(object)
         return open(self.get_holding_location(), 'rb')
 
 class pkdW(generic_dumper_wrapper):
     
-    def dump_object(self, object):
-        pickle.dump(object, open(self.get_holding_location(), 'wb'))
+    def dump_object(self, obj):
+        pickle.dump(obj, open(self.get_holding_location(), 'wb'))
 
 class mfdW(generic_dumper_wrapper):
 
     # do i have to create the folder first?
-    def dump_object(self, object):
-        write_mat(object, self.get_holding_location())
+    def dump_object(self, obj):
+        write_mat(obj, self.get_holding_location())
 
 class generic_vect_file_dumper_wrapper(generic_dumper_wrapper):
 
     # do i have to create the folder first?
-    def dump_object(self, object):
-        write_vect(object, self.get_holding_location())
+    def dump_object(self, obj):
+        write_vect(obj, self.get_holding_location())
 
-class default_file_dumper_wrapper(generic_dumper_wrapper):
+class dfdW(generic_dumper_wrapper):
 
-    def dump_object(self, object):
+    def dump_object(self, obj):
         f = open(self.get_holding_location(), 'w')
-        f.write(str(object))
+        f.write(str(obj))
         #pdb.set_trace()
         
-        
+class dadW(generic_dumper_wrapper):
+
+    def dump_object(self, object):
+        AlignIO.write(object, open(self.get_holding_location(),'w'), 'fasta')
 
 class wrapper_catalog(obj_wrapper, indexing_wrapper):
 

@@ -39,11 +39,12 @@ def dec(f):
  #       print '           starting to calculate NEW stuff in wrapper ', self, recalculate, to_pickle, to_filelize, always_recalculate
         try:
             if old_obj == None:
-                object = f(self, params, recalculate, to_pickle, to_filelize, always_recalculate)
+                obj = f(self, params, recalculate, to_pickle, to_filelize, always_recalculate)
             else:
-                object = f(self, params, recalculate, to_pickle, to_filelize, always_recalculate, old_obj)
-        except:
-            print 'ERROR DOWNSTREAM OF CALLING ', self
+                obj = f(self, params, recalculate, to_pickle, to_filelize, always_recalculate, old_obj)
+        except Exception, err:
+            print 'ERROR DOWNSTREAM OF CALLING ', self, err
+            print params
             self.temp_used_keys.pop()
             self.temp_dependents_keys.pop()
             self.temp_new_param_keys.pop()
@@ -54,8 +55,9 @@ def dec(f):
         self.used_keys_cache.set(self.temp_used_keys[-1], True)
         self.set_keys_cache.set(self.temp_new_param_keys[-1], True)
         try:
-            assert len(self.temp_used_keys) > 0
-            assert len(self.temp_used_keys) <= 1
+            asdf = 1
+            #assert len(self.temp_used_keys) > 0
+            #assert len(self.temp_used_keys) <= 1
         except:
             print 'TOO MANY THINGS?FEW ', self, len(self.temp_used_keys)
 
@@ -72,11 +74,12 @@ def dec(f):
             #pdb.set_trace()
             index = self.object_key_to_index.get_and_set_index(object_key, global_stuff.to_reindex)
             # self.object_key_to_index.set(object_key, index, to_reindex)
-            if hasattr(object, 'process_index'):
-                object.process_index(index)
+            if hasattr(obj, 'process_index'):
+                obj.process_index(index)
             object_key = index
         self.all_keys_cache.set(all_keys_key, all_keys, True, recalculate)
-        object = self.cache.set(object_key, object, to_pickle, params, to_filelize)
+        # set always recalculate to false here? if call dumper wrapper directly can set it to true
+        obj = self.cache.set(object_key, obj, to_pickle, params, to_filelize, always_recalculate)
 
         self.temp_used_keys.pop()
         self.temp_dependents_keys.pop()
@@ -84,7 +87,7 @@ def dec(f):
         
 
                     
-        return self.used_keys_cache.get(recalculate), all_keys, object
+        return self.used_keys_cache.get(recalculate), all_keys, obj
     
     def h(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
 #        if recalculate:
@@ -92,6 +95,8 @@ def dec(f):
         #pdb.set_trace()
 #        if self.__class__.__name__ != 'wrapper_catalog':
 #            assert recalculate == global_stuff.recalculate
+#        pdb.set_trace()
+
 
         if self.used_keys_cache.has(recalculate) and self.set_keys_cache.has(recalculate):
             used_keys = self.used_keys_cache.get(recalculate)
@@ -106,17 +111,17 @@ def dec(f):
                         object_index = self.object_key_to_index.get(object_key)
                         if self.cache.has(object_index, recalculate):
                             #print '           getting cached value in wrapper ', self
-                            object = self.cache.get(object_index, recalculate)
+                            obj = self.cache.get(object_index, recalculate)
                             if always_recalculate:
-                                return cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate, object)
-                            return used_keys, all_keys, object
+                                return cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate, obj)
+                            return used_keys, all_keys, obj
                         
                 if self.cache.has(object_key, recalculate):
                     #print '           getting cached value in wrapper ', self
-                    object = self.cache.get(object_key, recalculate)
+                    obj = self.cache.get(object_key, recalculate)
                     if always_recalculate:
-                        return cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate, object)
-                    return used_keys, all_keys, object
+                        return cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate, obj)
+                    return used_keys, all_keys, obj
         return cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate)
 
     return h
