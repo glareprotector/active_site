@@ -14,13 +14,10 @@ class model{
  public:
 
 
-  arbi_array<num> f_theta;
-
-
-  arbi_array<sample> data;
+  arbi_array<sample[1]> data;
   int num_samples;
-  arbi_array<int> training_indicies;
-  arbi_array<int> testing_indicies;
+  arbi_array<int1d> training_indicies;
+  arbi_array<int1d> testing_indicies;
   int num_training;
   int num_testing;
   int num_folds;
@@ -30,23 +27,23 @@ class model{
   int num_node_features;
   int num_edge_features;
   int theta_length;
-  arbi_array<int> node_map;
-  arbi_array<int> edge_map;
+  arbi_array<int2d> node_map;
+  arbi_array<int3d> edge_map;
 
-  arbi_array<num> gradient;
+  arbi_array<num1d> gradient;
   num likelihood;
-  //arbi_array<num> theta;
 
-  sample read_sample(string folder_name);
-  void load_data(arbi_array<string> folder_names);
+
+  sample read_sample();
+  void load_data();
   void assign(int _num_folds, int _which_fold);
   void normalize();
-  model(int _num_states, int _num_node_features, int _num_edge_features, arbi_array<string> _folder_names, int _mean_field_max_iter, int _num_folds, int _which_fold, string results_folder, num _reg_constant, int _which_obj, int _which_infer);
-  num get_L(int which_obj, arbi_array<num> theta);
-  num get_reg(arbi_array<num> theta);
-  arbi_array<num> get_dReg_dTheta(arbi_array<num> theta);
-  arbi_array<num> get_dL_dTheta(int which_obj, arbi_array<num> theta);
-  void report(arbi_array<num> theta, int iteration, num obj);
+  model();
+  num get_L(int which_obj, arbi_array<num1d> theta);
+  num get_reg(arbi_array<num1d> theta);
+  arbi_array<num1d> get_dReg_dTheta(arbi_array<num1d> theta);
+  arbi_array<num1d> get_dL_dTheta(int which_obj, arbi_array<num1d> theta);
+  void report(arbi_array<num1d> theta, int iteration, num obj);
   
   int mean_field_max_iter;
   num reg_constant;
