@@ -101,13 +101,16 @@ arbi_array<num2d> sample::get_node_potentials(arbi_array<num1d> theta){
       num temp = 0;
       for(int k = 0; k < p_model->num_node_features; k++){
 	temp = temp + node_features(i,k) * theta(p_model->node_map(j,k));
+	//cout<<temp<<" ";
       }
+      //cout<<endl;
       node_potentials(i,j) = temp;
       if(isfinite(temp) == false){
 	assert(false);
       }
     }
   }
+  //exit(1);
   return node_potentials;
 }
 
@@ -136,7 +139,7 @@ void sample::get_marginals(arbi_array<num1d> theta, arbi_array<num2d>& node_marg
   arbi_array<num2d> node_potentials = get_node_potentials(theta);
   arbi_array<num3d> edge_potentials = get_edge_potentials(theta);
   get_marginals(node_potentials, edge_potentials, node_marginals, edge_marginals);
-
+  //cout<<node_marginals<<endl;
 }
 
 // which infer method to used is stored in model
@@ -444,6 +447,15 @@ num sample::get_data_likelihood(arbi_array<num1d> theta){
   num log_z = get_log_Z(node_potentials, edge_potentials, node_marginals, edge_marginals);
   num data_potential = get_data_potential(node_potentials, edge_potentials);
 
+
+  //cout<<node_marginals<<endl;
+  //cout<<endl<<node_potentials<<endl;
+  //cout<<endl<<node_features<<endl;
+  //cout<<endl<<node_potentials.size().i0<<endl;
+  //cout<<log_z<<endl;
+  //cout<<data_potential<<endl;
+  //exit(1);
+
   assert(isfinite(log_z));
   assert(isfinite(data_potential));
   num ans = log_z - data_potential;
@@ -455,6 +467,7 @@ num sample::get_data_likelihood(arbi_array<num1d> theta){
 }
 
 num sample::get_L(int which_obj, arbi_array<num1d>& theta){
+
 
   switch(which_obj){
   case 0:
@@ -474,7 +487,8 @@ num sample::get_L(int which_obj, arbi_array<num1d>& theta){
 
 num sample::smooth_f(num x){
   //return exp(x);
-  return -1.0 / (1.0 + x*x);
+  num c = 10.0;
+  return 1 - (1.0 / (1.0 + c*x*x));
   return x*x;
   return exp(x*x);
 }
@@ -504,13 +518,28 @@ num sample::get_L_nodewise(arbi_array<num1d> theta){
   arbi_array<num2d> node_marginals;
   arbi_array<num3d> edge_marginals;
   get_marginals(theta, node_marginals, edge_marginals);
-
+  //  exit(1);
   PyObject* pFakeTrueNum = cached_obj_getter::call_wrapper(string("new_new_objects"), string("bhW"), globals::pParams, globals::recalculate, true, true, false);
   arbi_array<num1d> fake_true_num = cpp_caller::py_float_list_to_cpp_num_vect(pFakeTrueNum);
   Py_DECREF(pFakeTrueNum);
+
+  PyObject* pPosWeight = cached_obj_getter::get_param(globals::pParams, string("posw"));
+  num pos_weight = PyFloat_AsDouble(pPosWeight);
+  Py_DECREF(pPosWeight);
+
+
   for(int i = 0; i < num_nodes; i++){
-    loss += smooth_f(node_marginals(i,1) - fake_true_num(i));
+    num weight;
+    if(true_states(i) == 1){
+      weight = pos_weight;
+    }
+    else{
+      weight = 1.0;
+    }
+
+    loss += weight * smooth_f(node_marginals(i,1) - fake_true_num(i));
   }
+
   assert(isfinite(loss));
   return loss;
 }
@@ -529,8 +558,21 @@ void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<nu
   PyObject* pFakeTrueNum = cached_obj_getter::call_wrapper(string("new_new_objects"), string("bhW"), globals::pParams, globals::recalculate, true, true, false);
   arbi_array<num1d> fake_true_num = cpp_caller::py_float_list_to_cpp_num_vect(pFakeTrueNum);
   Py_DECREF(pFakeTrueNum);
+
+  PyObject* pPosWeight = cached_obj_getter::get_param(globals::pParams, string("posw"));
+  num pos_weight = PyFloat_AsDouble(pPosWeight);
+  Py_DECREF(pPosWeight);
+  
+
   for(int i = 0; i < num_nodes; i++){
-    dL_dNode_Mu(i,1) = d_smooth_f(node_marginals(i,1) - fake_true_num(i));
+    num weight;
+    if(true_states(i) == 1){
+      weight = pos_weight;
+    }
+    else{
+      weight = 1.0;
+    }
+    dL_dNode_Mu(i,1) = weight * d_smooth_f(node_marginals(i,1) - fake_true_num(i));
   }
   dL_dEdge_Mu = arbi_array<num3d>(num_edges, 2, 2);
   //dL_dEdge_Mu.fill(0);
@@ -538,6 +580,8 @@ void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<nu
 }
 
 num sample::get_L_expected_distance(arbi_array<num1d> theta){
+
+
 
   num loss = 0;
   arbi_array<num2d> node_marginals;
@@ -585,7 +629,8 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta){
 
 num sample::d_smooth_f(num x){
   //return exp(x);
-  return 2*x / ((x*x + 1) * (x*x + 1));
+  num c = 10.0;
+  return 2*c*x / ((c*x*x + 1) * (c*x*x + 1));
   return 2.0 * x;
   return exp(x*x) * 2.0 * x;
 }

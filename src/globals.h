@@ -1,13 +1,38 @@
 #include <string>
 #include <Python.h>
 
-
+#include <string>
 
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
 //#define SERIAL
 #define PARAM
+
+#include "lite_fixed.hpp"
+
+
+
+
+//typedef  vector<vector<vector<vector<double>>>> num4d_array;
+
+#define arbi_array lite::array
+
+using namespace std;
+
+typedef double num;
+
+typedef int int1d[1];
+typedef int int2d[1][1];
+typedef int int3d[1][1][1];
+typedef num num1d[1];
+typedef num num2d[1][1];
+typedef num num3d[1][1][1];
+//typedef num num4d[1][1][1][1];
+typedef string string1d[1];
+typedef string string2d[1][1];
+
+
 
 
 namespace globals{

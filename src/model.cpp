@@ -444,21 +444,26 @@ void model::load_data(){
       if(j % this->num_folds == this->which_fold){
 	//this->testing_indicies.append(next_sample_new_idx);
 	helpers::append(testing_indicies, next_sample_new_idx);
-      }
-      else{
+		}
+	else{
 	//this->training_indicies.append(next_sample_new_idx);
 	helpers::append(training_indicies, next_sample_new_idx);
-      }
+		}
     }
     catch(...){
       num_exceptions++;
       cout<<"default exception while reading sample in folder: "<<endl;
     }
+    
   }
 
 
   this->num_training = training_indicies.size().i0;
   this->num_testing = testing_indicies.size().i0;
+
+
+  cout<<"training_indicies: "<<training_indicies<<endl;
+  cout<<"testing_indicies: "<<testing_indicies<<endl;
 
 
 
@@ -500,6 +505,8 @@ model::model(){
   this->which_infer = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wif")));
   this->which_fold = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wfld")));
   this->num_folds = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("nfld")));
+  this->which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
+  this->which_obj2 = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob2")));
   load_data();
   //assign(this->num_folds, this->which_fold);
 
@@ -526,6 +533,9 @@ model::model(){
   }
   
   this->theta_length = idx;
+
+  cout<<node_map<<endl;
+  //exit(1);
 
   
   normalize();
@@ -593,6 +603,10 @@ arbi_array<num1d> model::get_dReg_dTheta(arbi_array<num1d> theta){
 
 num model::get_L(int which_obj, arbi_array<num1d> theta){
 
+  if(proc_id == 0){
+    cout<<"which_obj: "<<which_obj<<endl;
+  }
+
   num ans = 0, temp;
   for(int i = 0; i < num_training; i++){
     temp = data(training_indicies(i)).get_L(which_obj, theta);
@@ -613,7 +627,8 @@ class My_Minimizer: public Minimizer{
 
   virtual void ComputeGradient(vector<double>& gradient, const vector<double>& x){
     
-    int which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
+    //int which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
+    int which_obj = p_model->which_obj;
 
     #ifdef SERIAL
 
@@ -677,6 +692,8 @@ class My_Minimizer: public Minimizer{
 
   virtual double ComputeFunction(const vector<double>& x){
 
+    
+
     #ifndef SERIAL
     MPI_Barrier(MPI_COMM_WORLD);
     #endif
@@ -686,7 +703,8 @@ class My_Minimizer: public Minimizer{
       theta(i) = x[i];
     }
 
-    int which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
+    //int which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
+    int which_obj = p_model->which_obj;
 
     double ans = p_model->get_L(which_obj, theta);
     assert(isfinite(ans));
@@ -720,7 +738,11 @@ class My_Minimizer: public Minimizer{
   virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length){
     int s;
 
-    if(iteration%3 == 1){
+    if(iteration > 25){
+      p_model->which_obj = p_model->which_obj2;
+    }
+
+    if(iteration%5 == 1){
       arbi_array<num1d> theta_aa;  theta_aa.resize(theta.size());
       for(int i = 0; i < theta.size(); i++){
 	theta_aa(i) = theta[i];
@@ -843,20 +865,49 @@ int main(int argc, char** argv){
   vector<num> w0(m.theta_length, 0);
 
   //srand(time(NULL));
-  srand(3);
+  srand(0);
   for(int i = 0; i < m.theta_length; i++){
     w0[i] = ((num)(rand() % 100) / 100.0) - 0.5;
     //w0[i] = 1000;
-    w0[i] = 0;
+    //w0[i] = 0;
     //w0[i]=w0ar(i);
     }
   
   My_Minimizer* minner = new My_Minimizer(&m);
 
+
+
+  
+  
+  num val = minner->ComputeFunction(w0);  
+
+  //exit(1);
+
+  vector<num> grad(w0.size());
+  minner->ComputeGradient(grad, w0);
+
+  for(int i = 0; i < grad.size(); i++){
+    cout<<grad[i]<<" ";
+  }
+  
+
+  cout<<"theta: "<<endl;                                                                                                                                                           
+
+  for(int i = 0; i < w0.size(); i++){                                                                                                                                              
+    cout<<w0[i]<<" ";                                                                                                                                                              
+  }
+                                                                                                                                                                                 
+ cout<<"\nfxn val: "<<val<<endl;                                                                                                                                                   
+ //exit(1);
+
+
+
+
+
   
   //minner->LBFGS(w0,20000);
 
-  minner->LBFGS(w0,50);
+  minner->LBFGS(w0,5000);
 
   #ifndef SERIAL
   MPI_Finalize();

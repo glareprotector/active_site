@@ -124,7 +124,7 @@ class gW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
                 except Exception as e:
                     print 'ERROR: distance fail', self.params, i, j, residues[i].child_dict.keys(), residues[j].child_dict.keys()
                     dists[i][j] = -1
-#        pdb.set_trace()
+
         return dists
 
 class hW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
@@ -323,6 +323,8 @@ class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
             roc_classes = roc_classes + true_states
             roc_scores = roc_scores + scores
             assert(len(roc_classes) == len(roc_scores))
+
+        print [(roc_classes[i],roc_scores[i]) for i in range(len(roc_scores)) if roc_classes[i] == 1 ]
             
         ans = global_stuff.get_transpose([roc_classes, roc_scores])
         return ans
@@ -810,7 +812,7 @@ class bfW(wrapper.obj_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        pdb.set_trace()
+        #pdb.set_trace()
         chain = self.get_var_or_file(cW, params, recalculate, True, False, always_recalculate)
         ans = []
         for i in range(len(chain)):
@@ -836,7 +838,7 @@ class bhW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
         # get, for each site, the distance to closest active site
-        pdb.set_trace()
+#        pdb.set_trace()
         closest_dists = self.get_var_or_file(aqW, params, recalculate, True, True, False)
         which_f = self.get_param(params, 'wtpr')
         if which_f == 0:
@@ -862,7 +864,7 @@ class biW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
         trun_sorted_dist, trun_sorted_pos = self.get_var_or_file(apW, params, recalculate, True, False, False)
         cutoff = self.get_param(params, 'micut')
         #find to which index to calculate stuff
-        pdb.set_trace()
+        #pdb.set_trace()
         msa = self.get_var_or_file(agW, params, recalculate, True, True, False)
         ans = []
         for k in range(len(msa[0,:])):
@@ -887,6 +889,27 @@ class biW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
                         total = total + global_stuff.get_KL(d1,d2)
                         count = count + 1
             ans.append(total / float(count))
+        return ans
+
+# returns big matrix of features + labels + distance to closest site
+class bkW(wrapper.mat_obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        data_list = self.get_var_or_file(mW, params, recalculate, False, True, False)
+        ans = []
+        j = 0
+        for line in data_list:
+            print line, j
+            self.set_param(params, 'pdb_name', line[0])
+            self.set_param(params, 'chain_letter', line[1])
+            node_features = self.get_var_or_file(jW, params, recalculate, True, True, False)
+            true_classes = self.get_var_or_file(oW, params, recalculate, True, True, False)
+            dist = self.get_var_or_file(aqW, params, recalculate, True, True, False)
+            num_sites = len(node_features)
+            temp = [node_features[i] + [true_classes[i]] + [dist[i]] for i in range(num_sites)]
+            ans = ans + temp
+            j = j + 1
         return ans
 
 
