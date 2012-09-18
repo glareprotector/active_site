@@ -48,6 +48,7 @@ class model{
   int mean_field_max_iter;
   num reg_constant;
   int which_obj;
+  int which_obj2;
   int which_infer;
   int which_reg;
 
