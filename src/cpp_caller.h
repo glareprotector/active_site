@@ -46,6 +46,9 @@ class cpp_caller{
     strcpy(obj_name_char, obj_name.c_str());
     PyObject *pModule, *pDict, *pObj;
     pModule = _get_module(module_name); // new
+    if(pModule == NULL){
+      cout<<"no module "<<module_name<<" "<<obj_name<<endl;
+    }
     pDict = PyModule_GetDict(pModule); // borrowed
     pObj = PyDict_GetItemString(pDict, obj_name_char); // borrowed
     Py_DECREF(pModule);

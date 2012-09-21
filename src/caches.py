@@ -21,6 +21,7 @@ class file_cache_for_wrapper(object):
 
     # if we are not trusting the files previously in file system, then we only say a file is there if it was created this round
     def has(self, object_key, recalculate):
+#        pdb.set_trace()
         if object_key in self.files_created:
             return True
         elif not recalculate:

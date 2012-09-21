@@ -15,7 +15,10 @@ def get_stuff(wrapper_class, params, recalculate, to_pickle, to_filelize, always
 #    pdb.set_trace()
     wc_used_keys, wc_all_keys, wrapper_instance = wc.constructor(params, True, False, False)
 
-    stuff_used_keys, stuff_all_keys, stuff = wrapper_instance.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate = always_recalculate)
+    try:
+        stuff_used_keys, stuff_all_keys, stuff = wrapper_instance.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate = always_recalculate)
+    except Exception, err:
+        print 'ERROR when calling get_stuff with this error', err, params
     return stuff
 
 

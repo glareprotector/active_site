@@ -2,7 +2,7 @@ from param import param
 
 import pdb, os, subprocess, constants
 import cPickle as pickle
-from global_stuff import print_stuff_dec, write_mat, write_vect
+from global_stuff import print_stuff_dec, write_mat, write_vect, super_shorten
 
 from Bio import AlignIO
 
@@ -19,6 +19,9 @@ from wrapper_decorator import *
 # this is the function wrapper
 
 class wrapper(object):
+
+    def super_shorten(self):
+        return False
 
     def specificity(self):
         return None
@@ -38,14 +41,25 @@ class wrapper(object):
     # if the wrapper index stuff, its objects can obtain indicies thru maker->object_key_to_index
     # in general, the methods i make should have a maker pointer so that params can be accessed thru the maker
     def get_name(self, object_key, to_reindex = global_stuff.to_reindex):
-        if not self.makes_index():
-            return self.__repr__() + str(object_key)
-        elif not to_reindex:
-            return self.__repr__() + str(object_key)
+        if not self.super_shorten():
+            if not self.makes_index():
+                return self.__repr__() + str(object_key)
+            elif not to_reindex:
+                return self.__repr__() + str(object_key)
+            else:
+                pdb.set_trace()
+                assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
+                return self.__repr__() + str(self.maker.object_key_to_index.get(object_key))
         else:
-            pdb.set_trace()
-            assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
-            return self.__repr__() + str(self.maker.object_key_to_index.get(object_key))
+            if not self.makes_index():
+                return self.__repr__() + global_stuff.super_shorten(str(object_key))
+            elif not to_reindex:
+                return self.__repr__() + global_stuff.super_shorten(str(object_key))
+            else:
+                pdb.set_trace()
+                assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
+                return self.__repr__() + global_stuff.super_shorten(str(self.maker.object_key_to_index.get(object_key)))
+            
 
     # can't get and set same parameter in the same run of constructor.  at the beginning of constructor, set maker.  in init of whatever object, would fetch maker.  can NOT get, then set.  however, can set and THEN get.
     def basic_init(self, maker, params):
@@ -126,6 +140,12 @@ class wrapper(object):
     def set(self, object_key, object, to_pickle, params):
         return self.cache.set(object_key, object, to_pickle, params)
 
+class shorten_name_wrapper(wrapper):
+
+    def super_shorten(self):
+        return True
+
+
 class always_recalculate_wrapper(wrapper):
 
     def always_recalculate(self):
@@ -195,7 +215,7 @@ class file_wrapper(wrapper):
         return constants.BIN_FOLDER + str(id(self)) + '.backup'
 
     def get_holding_location(self):
-        return constants.BIN_FOLDER + str(id(self))
+        return constants.HOLDING_FOLDER + str(id(self))
 
     def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key)
@@ -206,15 +226,19 @@ class file_wrapper(wrapper):
         
     @print_stuff_dec
     def get_holding_folder(self):
-        return constants.BIN_FOLDER
+        return constants.HOLDING_FOLDER
 
     
 # for now, assume source_wrapper instance is available.  if instance is available, that means it wasn't created yet, so wouldn't be in wrapper registry, so don't need to fetch it from there.  in the future, might separately create source instance first, in which case might instead pass in the parameters needed to fetch the param.  or could fetch the instance first externally, then pass to this __init__
 class generic_dumper_wrapper(file_wrapper):
 
     def __repr__(self):
-        return self.__class__.__name__  + '-' + self.source_wrapper.__repr__()
+        return self.__class__.__name__ # + '-' + self.source_wrapper.__repr__()
 
+
+    def get_name(self, object_key, to_reindex = global_stuff.to_reindex):
+        return self.__repr__() + '-' + self.source_wrapper.get_name(object_key)
+        
     def other_init(self, maker, params):
         self.source_wrapper = maker.get_param(params, "dumper_source_instance")
         #print self, self.source_wrapper

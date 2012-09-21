@@ -487,8 +487,10 @@ num sample::get_L(int which_obj, arbi_array<num1d>& theta){
 
 num sample::smooth_f(num x){
   //return exp(x);
-  num c = 10.0;
-  return 1 - (1.0 / (1.0 + c*x*x));
+  PyObject* pSFC = cached_obj_getter::get_param(globals::pParams, string("sfc"));
+  num sfc = PyFloat_AsDouble(pSFC);
+  Py_DECREF(pSFC);
+  return 1 - (1.0 / (1.0 + sfc*x*x));
   return x*x;
   return exp(x*x);
 }
@@ -538,6 +540,10 @@ num sample::get_L_nodewise(arbi_array<num1d> theta){
     }
 
     loss += weight * smooth_f(node_marginals(i,1) - fake_true_num(i));
+    if(!isfinite(loss)){
+      cout<<node_marginals(i,1)<<" asdf "<<fake_true_num(i)<<endl;
+      assert(false);
+    }
   }
 
   assert(isfinite(loss));
@@ -629,8 +635,11 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta){
 
 num sample::d_smooth_f(num x){
   //return exp(x);
-  num c = 10.0;
-  return 2*c*x / ((c*x*x + 1) * (c*x*x + 1));
+  PyObject* pSFC = cached_obj_getter::get_param(globals::pParams, string("sfc"));
+  num sfc = PyFloat_AsDouble(pSFC);
+  Py_DECREF(pSFC);
+  
+  return 2*sfc*x / ((sfc*x*x + 1) * (sfc*x*x + 1));
   return 2.0 * x;
   return exp(x*x) * 2.0 * x;
 }
@@ -864,7 +873,7 @@ void sample::get_marginals_BP(arbi_array<num2d> node_potentials, arbi_array<num3
 
   times_called++;
 
-  int bp_max_iter = 15;
+  int bp_max_iter = 20;
   for(int i = 0; i < bp_max_iter; i++){
     swap(old_msgs, new_msgs);
     for(int j = 0; j < num_edges; j++){

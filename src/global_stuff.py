@@ -5,7 +5,7 @@ Created on Mar 9, 2012
 '''
 from manager import *
 import string
-import Bio.PDB
+#import Bio.PDB
 import csv
 import constants
 import string
@@ -30,7 +30,7 @@ metric_cutoffs = [1,2,3,4,5,6,7,8,9]
 
 
 
-RESULTS_FOLDER = '/home/fultonw/Dropbox/active_site/'
+RESULTS_FOLDER = '../results/'
 
 
 NACCESS_PATH = '/mnt/work/fultonw/active_site/Naccess/naccess'
@@ -58,7 +58,14 @@ def shorten(x):
     x = re.sub(r' ','',x)
     return x
 
-    
+
+def super_shorten(x):
+    x = re.sub(r'<','',x)
+    x = re.sub(r'>','',x)
+    x = re.sub(r'f\.','',x)
+    x = re.sub(r'\),\(',')(',x)
+    return x
+
 
 def get_KL(d1, d2):
 

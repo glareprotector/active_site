@@ -36,7 +36,7 @@ class fW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-
+        pdb.set_trace()
         pdb_file_name = self.get_param(params, 'pdb_name')
         pdbl = Bio.PDB.PDBList()
         pdbl.retrieve_pdb_file(pdb_file_name, pdir=self.get_holding_folder())
@@ -208,7 +208,7 @@ class kW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
 #        pdb.set_trace()
         return edge_features
 
-class lW(wrapper.obj_wrapper):
+class lW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
@@ -225,6 +225,12 @@ class lW(wrapper.obj_wrapper):
         the_dict['wob'] = self.get_param(params, "wob")
         the_dict['reg'] = self.get_param(params, "reg")
         the_dict['wreg'] = self.get_param(params, "wreg")
+        the_dict['wob2'] = self.get_param(params, "wob2")
+        the_dict['nwc'] = self.get_param(params, "nwc")
+        the_dict['wtpr'] = self.get_param(params, "wtpr")
+        the_dict['posw'] = self.get_param(params, "posw")
+        the_dict['sfc'] = self.get_param(params, "sfc")
+        
         return the_dict
 
 class mW(wrapper.mat_obj_wrapper):
@@ -241,7 +247,7 @@ class mW(wrapper.mat_obj_wrapper):
         return ans
 
         
-class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
+class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
 
     # params will be [(scores, sizes, pdb_name, chain_letter),   ]
     # params which which it is stored does NOT include these things...only data_list, params for getting features
@@ -301,7 +307,7 @@ class oW(wrapper.vect_obj_wrapper, wrapper.by_pdb_folder_wrapper):
         return true_states
 
 
-class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
+class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
@@ -330,7 +336,7 @@ class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
         return ans
 
 
-class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper):
+class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
 
     # this part does not work
     # params will be those required by experiment_results, which are those required by experiment_info.
@@ -342,9 +348,9 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper):
         # figure out which roc file input wrapper to use
         which_classifier_roc_input = self.get_param(params, 'wclf')
         # if using svm, treat 'iter' as the fold number just so i don't have to change roc curve code yet
-        import try_svm
-        if which_classifier_roc_input == try_svm.atW:
-            self.set_param(params, 'iter', self.get_param(params, 'wfld'))
+        #import try_svm
+        #if which_classifier_roc_input == try_svm.atW:
+        #    self.set_param(params, 'iter', self.get_param(params, 'wfld'))
         self.set_param(params, 'which_wrapper_class', which_classifier_roc_input)
         pW_instance = self.old_get_var_or_file(wc, params, True, False, False)
         if always_recalculate:
@@ -366,7 +372,6 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper):
         if old_obj != None:
             subprocess.call(['convert', '-append', old_obj.name, destination, destination])
         return open(destination)
-
     def get_file_location(self, object_key):
         return self.get_folder(object_key) + self.get_name(object_key) + '.jpg'
 
@@ -505,7 +510,7 @@ class agW(wrapper.msa_obj_wrapper, wrapper.by_pdb_folder_wrapper):
         return to_return
 
 # if a chain has k true sites, it sees if any of the k most highly ranked sites are within a certain cut-off
-class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
+class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = True, old_obj = None):
@@ -911,6 +916,36 @@ class bkW(wrapper.mat_obj_wrapper):
             ans = ans + temp
             j = j + 1
         return ans
+
+
+# file written will contain param as a string, auroc, precrec area, iterations
+class blW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+#        pdb.set_trace()
+        # first get instance of pW
+        from wc import wc
+        # figure out which roc file input wrapper to use
+        which_classifier_roc_input = self.get_param(params, 'wclf')
+        # if using svm, treat 'iter' as the fold number just so i don't have to change roc curve code yet
+        #import try_svm
+        #if which_classifier_roc_input == try_svm.atW:
+        #    self.set_param(params, 'iter', self.get_param(params, 'wfld'))
+        self.set_param(params, 'which_wrapper_class', which_classifier_roc_input)
+        pW_instance = self.old_get_var_or_file(wc, params, True, False, False)
+        if always_recalculate:
+            f  = self.old_get_var_or_file(pW_instance.cache.file_dumper_wrapper, params, recalculate, False, False, 2)
+        else:
+            f  = self.old_get_var_or_file(pW_instance.cache.file_dumper_wrapper, params, recalculate, False, False, False)
+        # call R roc area calculating script, specifying input location and where to write results
+        source = f.name
+        destination = self.get_holding_location()
+        assert os.path.isfile(source)
+        iteration = self.get_param(params, 'iter', record=False)
+        obj_val = self.get_param(params, 'obj_val', record=False)
+        subprocess.call(['Rscript', constants.ROC_INFO_SCRIPT, source, destination, str(iteration), str(obj_val)])
+        return open(destination)
 
 
 def print_stuff(x):
