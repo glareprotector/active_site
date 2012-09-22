@@ -54,6 +54,8 @@ class model{
 
   string results_folder;
 
+  num prev_obj;
+
 };
 
 #endif

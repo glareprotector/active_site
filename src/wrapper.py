@@ -237,7 +237,7 @@ class generic_dumper_wrapper(file_wrapper):
 
 
     def get_name(self, object_key, to_reindex = global_stuff.to_reindex):
-        return self.__repr__() + '-' + self.source_wrapper.get_name(object_key)
+        return self.__repr__() + '-' +  self.source_wrapper.get_name(object_key)
         
     def other_init(self, maker, params):
         self.source_wrapper = maker.get_param(params, "dumper_source_instance")

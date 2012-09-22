@@ -930,7 +930,7 @@ class blW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.shor
         which_classifier_roc_input = self.get_param(params, 'wclf')
         # if using svm, treat 'iter' as the fold number just so i don't have to change roc curve code yet
         #import try_svm
-        #if which_classifier_roc_input == try_svm.atW:
+        # if which_classifier_roc_input == try_svm.atW:
         #    self.set_param(params, 'iter', self.get_param(params, 'wfld'))
         self.set_param(params, 'which_wrapper_class', which_classifier_roc_input)
         pW_instance = self.old_get_var_or_file(wc, params, True, False, False)

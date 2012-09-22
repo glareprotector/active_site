@@ -7,7 +7,7 @@
 
 
 #ifndef SERIAL 
-#include <mpi.h> 
+#include "mpi.h" 
 #endif
 
 sample model::read_sample(){
@@ -17,7 +17,7 @@ sample model::read_sample(){
   string chain_letter = cpp_caller::CPPString_From_PyString(cpp_caller::get_param(globals::pParams, string("chain_letter")));
 
   cout<<"proc_id "<<proc_id<<" is loading "<<pdb_name<<" "<<chain_letter<<endl;
-
+  
   PyObject* pNodeFeatures = cached_obj_getter::call_wrapper(string("new_new_objects"), string("jW"), globals::pParams, globals::recalculate, true, true);
   
   arbi_array<num2d> node_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("jW"), globals::pParams, globals::recalculate, true, true), true);
@@ -288,7 +288,7 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
 
 
 
-
+  cout<<"PROC_ID: "<<proc_id<<endl;
 
   if(proc_id == 0){
 
@@ -318,6 +318,7 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
     cpp_caller::set_param(globals::pParams, string("obj_val"), &obj, globals::NUM_TYPE);
     // always recalculate this
     cached_obj_getter::call_wrapper(string("new_new_objects"), string("qW"), globals::pParams, true, false, false, true);
+    cached_obj_getter::call_wrapper(string("new_new_objects"), string("blW"), globals::pParams, true, false, false, true);
     cached_obj_getter::call_wrapper(string("new_new_objects"), string("ahW"), globals::pParams, true, true, true, true);
   }
 
@@ -367,7 +368,7 @@ void model::load_data(){
   for(int i = 0; i < num_procs; i++){
     if(proc_id == i){
       MPI_Barrier(MPI_COMM_WORLD);
-      pASDF = cached_obj_getter::call_wrapper(string("new_new_objects"), string("mW"), globals::pParams, globals::recalculate, true, true, true);
+      pASDF = cached_obj_getter::call_wrapper(string("new_new_objects"), string("mW"), globals::pParams, globals::recalculate, false, false, false);
       cpp_caller::py_print(pASDF);
       MPI_Barrier(MPI_COMM_WORLD);
     }
@@ -416,6 +417,16 @@ void model::load_data(){
   this->training_indicies.resize(0);
   this->testing_indicies.resize(0);
 
+
+  PyObject* pSelf = cached_obj_getter::get_param(globals::pParams, string("self"));
+  bool self_test;
+  if(pSelf == Py_True){
+    self_test = true;
+  }
+  else{
+    self_test = false;
+  }
+  //  Py_DECREF(pSelf);
   
   for(int i = 0; i < idx_i_care.size().i0; i++){
     //cout<<i<<endl;
@@ -441,14 +452,21 @@ void model::load_data(){
       helpers::append(this->data, s);
       int next_sample_new_idx = this->data.size().i0 - 1;
       // assign testing/training based on original index
-      if(j % this->num_folds == this->which_fold){
+      if(self_test == false){
+	if(j % this->num_folds == this->which_fold){
 	//this->testing_indicies.append(next_sample_new_idx);
-	helpers::append(testing_indicies, next_sample_new_idx);
-		}
+	  helpers::append(testing_indicies, next_sample_new_idx);
+	}
 	else{
-	//this->training_indicies.append(next_sample_new_idx);
+	  //this->training_indicies.append(next_sample_new_idx);
+	  helpers::append(training_indicies, next_sample_new_idx);
+	}
+      }
+      else{
+	helpers::append(testing_indicies, next_sample_new_idx);
 	helpers::append(training_indicies, next_sample_new_idx);
-		}
+      }
+	
     }
     catch(...){
       num_exceptions++;
@@ -539,6 +557,8 @@ model::model(){
 
   
   normalize();
+
+  this->prev_obj = -1;
   
 }
 
@@ -738,7 +758,18 @@ class My_Minimizer: public Minimizer{
   virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length){
     int s;
 
-    if(iteration > 25){
+    if(p_model->prev_obj == -1){
+      p_model->prev_obj = objective;
+    }
+    else{
+      if(fabs(p_model->prev_obj-objective)< 0.00001){
+	//exit(0);
+      }
+      p_model->prev_obj = objective;
+    }
+      
+
+    if(iteration > 25000){
       p_model->which_obj = p_model->which_obj2;
     }
 
@@ -759,7 +790,59 @@ class My_Minimizer: public Minimizer{
 
 set<string> cpp_caller::added_paths;
 
-int main(int argc, char** argv){
+bool is_numeric(string s){
+  for(int i = 0; i < s.length(); i++){
+    if(isdigit(s[i])){
+      return true;
+    }
+  }
+  return false;
+}
+
+bool has_decimal(string s){
+  for(int i = 0; i < s.length(); i++){
+    if(s[i] == '.'){
+      return true;
+    }
+  }
+  return false;
+}
+    
+
+// sets globals::pParams based on input arguments
+// 
+void set_input_params(PyObject* pParams, int argc, char* argv[]){
+  // assume that arguments alternate 
+  int i = 1;
+  while(i < argc){
+    string key = string(argv[i]);
+    string val = string(argv[i+1]);
+    cout<<i<<" "<<val<<" ok "<<key<<endl;
+    // determine what type val is
+    if(!is_numeric(val)){
+      cout<<"string"<<endl;
+      cpp_caller::set_param(pParams, key, &val, globals::STRING_TYPE);
+    }
+    else if(has_decimal(val)){
+      cout<<"float"<<endl;
+      num temp = atof(val.c_str());
+      cpp_caller::set_param(pParams, key, &temp, globals::NUM_TYPE);
+    }
+    else{
+      cout<<"int"<<endl;
+      int temp = atoi(val.c_str());
+      cpp_caller::set_param(pParams, key, &temp, globals::INT_TYPE);
+    }
+    i = i + 2;
+   }
+  cout<<i<<" whoz "<<argc<<endl;
+  //assert(i == argc+1);
+}
+
+
+
+
+int main(int argc, char* argv[]){
 
   globals::init(argc, argv);
   Py_Initialize();
@@ -771,14 +854,15 @@ int main(int argc, char** argv){
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-  
+  cout<<"PROC_ID_BEG: "<<proc_id<<endl;
+  //exit(1);
   #else
 
   proc_id = 0;
 
   #endif
 
-
+  cout<<"EE"<<endl;
 
   PyObject* pSysPath= cpp_caller::_get_module_PyObject(string("sys"), string("path"));
   
@@ -786,13 +870,15 @@ int main(int argc, char** argv){
     cpp_caller::added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
   }
 
-
+  cout<<"DD"<<endl;
 
   // for each node, set global_stuff.proc_id so that while writing files, can tell only root proc to do so
 
   PyObject* pProc_Id;
   PyObject* pBoolTemp;
   PyObject* pResult;
+
+  cout<<"AA"<<endl;
 
   #ifdef SERIAL 
 
@@ -822,7 +908,18 @@ int main(int argc, char** argv){
   pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("lW"), globals::pParams, globals::recalculate, false, false);
   Py_DECREF(pResult);
 
+
+  // test if param input is working properly
+  set_input_params(globals::pParams, argc, argv);
+  cpp_caller::py_print(globals::pParams);
+  
+
+
+
   #else
+
+  cout<<"BB"<<endl;
+
   for(int i = 0; i < num_procs; i++){
     MPI_Barrier(MPI_COMM_WORLD);
     if(proc_id == i){
@@ -831,6 +928,7 @@ int main(int argc, char** argv){
       pProc_Id = PyInt_FromLong(proc_id);
 
       globals::pParams = cpp_caller::get_module_PyObject(string("parameters"), string("the_params"));
+      set_input_params(globals::pParams, argc, argv);
 
       pBoolTemp = cpp_caller::get_module_PyObject(string("global_stuff"), string("recalculate"));
       if(pBoolTemp == Py_True){ 
@@ -861,6 +959,7 @@ int main(int argc, char** argv){
 
   model m;
   
+
   
   vector<num> w0(m.theta_length, 0);
 
