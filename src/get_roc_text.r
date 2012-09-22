@@ -51,7 +51,7 @@ area_prec_rec = integrate(f,0,1)$value
 
 precrec_title_string = paste("iter", iter_string, "obj:", obj_str, "prec_rec", format(area_prec_rec, digits=4), Sys.time(), sep = " ")
 
-#plot(perf, main = precrec_title_string, ylim=c(0,1))
+#plot(perf, main = precrec_titl e_string, ylim=c(0,1))
 
 # write to alternate file that has similar name to output file: output file, auroc, area under prec_rec
 alternate_out = paste(output_file,".num_result",sep='.')
