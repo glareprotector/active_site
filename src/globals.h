@@ -6,7 +6,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define SERIAL
+//#define SERIAL
 #define PARAM
 
 #include "lite_fixed.hpp"
