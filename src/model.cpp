@@ -975,6 +975,13 @@ int main(int argc, char* argv[]){
   My_Minimizer* minner = new My_Minimizer(&m);
 
 
+  ofstream asdf("theta_shorter.csv");
+  for(int i = 0; i < m.theta_length; i++){
+    asdf<<w0[i]<<',';
+  }
+  asdf.close();
+  exit(1);
+
 
   
   
