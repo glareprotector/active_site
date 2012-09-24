@@ -51,6 +51,26 @@ proc_id = 0
 def get_aux_folder(pdb_name, chain_letter):
     return constants.AUX_FOLDER + string.lower(pdb_name) + ':' + string.upper(chain_letter) + '/'
 
+# returns mat normalized by columns
+def normalize_mat(mat):
+    height = len(mat)
+    width = len(mat[0])
+    normalized = [ [0 for i in range(width)] for j in range(height)]
+    pdb.set_trace()
+    for i in range(width):
+        a_mean_sum = 0.0
+        for j in range(height):
+            a_mean_sum = a_mean_sum + mat[j][i]
+        a_mean = a_mean_sum / height
+        a_var_sum = 0
+        for j in range(height):
+            a_var_sum = a_var_sum + pow((mat[j][i] - a_mean), 2)
+        sd = math.sqrt(a_var_sum / height)
+        if abs(sd) > .00001:
+            for j in range(height):
+                normalized[j][i] = (mat[j][i] - a_mean) / sd
+    return normalized
+
 
 def shorten(x):
     x = re.sub(r'\'','',x)

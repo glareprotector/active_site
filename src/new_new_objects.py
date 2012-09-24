@@ -947,6 +947,22 @@ class blW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.shor
         subprocess.call(['Rscript', constants.ROC_INFO_SCRIPT, source, destination, str(iteration), str(obj_val)])
         return open(destination)
 
+# returns node_features for a sample, but normalized within the sample
+class bmW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        pdb.set_trace()
+        node_features = self.get_var_or_file(jW, params, recalculate, True, True, False)
+        return global_stuff.normalize_mat(node_features)
+                
+# returns edge_features for a sample, but normalized within the sample
+class bnW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        edge_features = self.get_var_or_file(kW, params, recalculate, True, True, False)
+        return global_stuff.normalize_mat(edge_features)
 
 def print_stuff(x):
     #pdb.set_trace()
