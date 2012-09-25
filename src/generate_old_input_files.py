@@ -39,10 +39,20 @@ class generate_old_input_files(wrapper.obj_wrapper):
             helper.write_mat(edge_features_transposed, the_folder + 'Xedge.csv')
 
             true_states = self.get_var_or_file(objects.oW, params, False, False, False)
+            true_states = [true_states[i]+1 for i in range(len(true_states))]
             helper.write_vect(true_states, the_folder + 'true_y.csv')
 
             edge_list = self.get_var_or_file(objects.iW, params, False, False, False)
             helper.write_mat(edge_list, the_folder + 'edge_list.csv')
+
+            num_nodes = len(node_features)
+            adj_mat = [ [0 for i in range(num_nodes)] for j in range(num_nodes)]
+            for i in range(len(edge_list)):
+                n1 = edge_list[i][0]
+                n2 = edge_list[i][1]
+                adj_mat[n1][n2] = 1
+                adj_mat[n2][n1] = 1
+            helper.write_mat(adj_mat, the_folder + 'adj_mat.csv')
 
             info = [str(len(node_features)), str(len(edge_features)), str(2), str(len(node_features[0])), str(len(edge_features[0]))]
             helper.write_vect(info, the_folder + 'info.txt', the_sep = ' ')
