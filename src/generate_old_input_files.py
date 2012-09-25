@@ -29,12 +29,12 @@ class generate_old_input_files(wrapper.obj_wrapper):
             if not os.path.exists(the_folder):
                 os.makedirs(the_folder)
             pdb.set_trace()
-            node_features = self.get_var_or_file(objects.jW, params, False, False, False)
+            node_features = self.get_var_or_file(objects.bmW, params, False, False, False)
             transposed_node_features = helper.get_transpose(node_features)
             pdb.set_trace()
             helper.write_mat(transposed_node_features, the_folder + 'Xnode.csv')
             pdb.set_trace()
-            edge_features = self.get_var_or_file(objects.kW, params, False, False, False)
+            edge_features = self.get_var_or_file(objects.bnW, params, False, False, False)
             edge_features_transposed = helper.get_transpose(edge_features)
             helper.write_mat(edge_features_transposed, the_folder + 'Xedge.csv')
 
@@ -44,7 +44,7 @@ class generate_old_input_files(wrapper.obj_wrapper):
             edge_list = self.get_var_or_file(objects.iW, params, False, False, False)
             helper.write_mat(edge_list, the_folder + 'edge_list.csv')
 
-            info = [str(len(node_features)), str(len(edge_features))]
+            info = [str(len(node_features)), str(len(edge_features)), str(2), str(len(node_features[0])), str(len(edge_features[0]))]
             helper.write_vect(info, the_folder + 'info.txt', the_sep = ' ')
             
             
