@@ -1,6 +1,6 @@
 import pdb
 import global_stuff
-
+import helper
 class param(object):
     
     def __init__(self, param_dict):
@@ -22,7 +22,7 @@ class param(object):
         return param(dict(self.param_dict.items() + other.param_dict.items()))
     
     def __str__(self):
-        return global_stuff.shorten(str(sorted(self.param_dict.iteritems())))
+        return helper.shorten(str(sorted(self.param_dict.iteritems())))
     
     def get_copy(self):
         to_return = param({})

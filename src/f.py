@@ -7,7 +7,7 @@ import string
 from Bio.PDB import Polypeptide
 import numpy
 import global_stuff
-
+import helper
 
 class rW(obj_wrapper):
 
@@ -125,7 +125,7 @@ class akW(obj_wrapper):
 
         d1 = re.sub(r'-','',col1)
         d2 = re.sub(r'-','',col2)
-        return [global_stuff.get_KL(d1,d2)]
+        return [helper.get_KL(d1,d2)]
 
 class axW(obj_wrapper):
 
@@ -181,7 +181,7 @@ class beW(obj_wrapper):
         yes = 999
         for i in range(num_pockets_to_consider):
             pocket_coord = numpy.array(sites[i])
-            dist = global_stuff.physical_distance(coord - pocket_coord)
+            dist = helper.physical_distance(coord - pocket_coord)
 
             if dist  < yes:
                 yes = dist

@@ -3,7 +3,7 @@ from param import param
 import pdb, os, subprocess, constants
 import cPickle as pickle
 from global_stuff import print_stuff_dec, write_mat, write_vect, super_shorten
-
+import helper
 from Bio import AlignIO
 
 import caches
@@ -52,9 +52,9 @@ class wrapper(object):
                 return self.__repr__() + str(self.maker.object_key_to_index.get(object_key))
         else:
             if not self.makes_index():
-                return self.__repr__() + global_stuff.super_shorten(str(object_key))
+                return self.__repr__() + helper.super_shorten(str(object_key))
             elif not to_reindex:
-                return self.__repr__() + global_stuff.super_shorten(str(object_key))
+                return self.__repr__() + helper.super_shorten(str(object_key))
             else:
                 pdb.set_trace()
                 assert self.maker.object_key_to_index.has(object_key, to_reindex) == True

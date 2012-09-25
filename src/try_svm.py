@@ -9,7 +9,7 @@ from sklearn.cross_validation import StratifiedKFold
 from sklearn import svm
 import numpy
 import global_stuff
-
+import helper
 # takes in data_list, num_folds, fold_number and returns the trained SVM model
 class asW(wrapper.obj_wrapper, wrapper.experiment_results_wrapper):
 
@@ -56,4 +56,4 @@ class atW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
         y_list = y_test.tolist()
         probs_list = probs.tolist()
 #        pdb.set_trace()
-        return global_stuff.get_transpose([y_list, probs_list])
+        return helper.get_transpose([y_list, probs_list])

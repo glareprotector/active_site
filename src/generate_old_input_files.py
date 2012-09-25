@@ -3,6 +3,7 @@ import wc
 import new_new_objects as objects
 import param
 import global_stuff
+import helper
 import wrapper
 import os
 from wrapper_decorator import dec
@@ -29,22 +30,22 @@ class generate_old_input_files(wrapper.obj_wrapper):
                 os.makedirs(the_folder)
 
             node_features = self.get_var_or_file(objects.jW, params, False, False, False)
-            transposed_node_features = global_stuff.get_transpose(node_features)
+            transposed_node_features = helper.get_transpose(node_features)
             pdb.set_trace()
-            global_stuff.write_mat(transposed_node_features, the_folder + 'Xnode.csv')
+            helper.write_mat(transposed_node_features, the_folder + 'Xnode.csv')
             pdb.set_trace()
             edge_features = self.get_var_or_file(objects.kW, params, False, False, False)
-            edge_features_transposed = global_stuff.get_transpose(edge_features)
-            global_stuff.write_mat(edge_features_transposed, the_folder + 'Xedge.csv')
+            edge_features_transposed = helper.get_transpose(edge_features)
+            helper.write_mat(edge_features_transposed, the_folder + 'Xedge.csv')
 
             true_states = self.get_var_or_file(objects.oW, params, False, False, False)
-            global_stuff.write_vect(true_states, the_folder + 'true_y.csv')
+            helper.write_vect(true_states, the_folder + 'true_y.csv')
 
             edge_list = self.get_var_or_file(objects.iW, params, False, False, False)
-            global_stuff.write_mat(edge_list, the_folder + 'edge_list.csv')
+            helper.write_mat(edge_list, the_folder + 'edge_list.csv')
 
             info = [str(len(node_features)), str(len(edge_features))]
-            global_stuff.write_vect(info, the_folder + 'info.txt', the_sep = ' ')
+            helper.write_vect(info, the_folder + 'info.txt', the_sep = ' ')
             
             
         return None

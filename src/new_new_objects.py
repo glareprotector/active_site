@@ -14,7 +14,7 @@ import numpy
 import Bio.PDB
 import constants
 import global_stuff
-
+import helper
 from Bio import SeqIO
 from Bio.Blast import NCBIXML
 from Bio.Blast.Applications import NcbipsiblastCommandline
@@ -114,7 +114,7 @@ class gW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
         residues = self.get_var_or_file(cW, params, recalculate, True)
-        rep_atoms = [global_stuff.get_representative_atom(res) for res in residues]
+        rep_atoms = [helper.get_representative_atom(res) for res in residues]
         num_res = len(residues)
         dists = [[-1 for i in range(num_res)] for j in range(num_res)]
         for i in range(num_res):
@@ -289,7 +289,7 @@ class oW(wrapper.vect_obj_wrapper, wrapper.by_pdb_folder_wrapper):
         #pdb.set_trace()
         pdb_name = self.get_param(params, 'pdb_name')
         chain_letter = self.get_param(params, 'chain_letter')
-        aux_folder = global_stuff.get_aux_folder(pdb_name, chain_letter)
+        aux_folder = helper.get_aux_folder(pdb_name, chain_letter)
         states_file = aux_folder + string.lower(pdb_name) + '.catres'
         f = open(states_file, 'r')
         true_states = [0 for i in range(len(pos_to_aa.keys()))]
@@ -332,7 +332,7 @@ class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
 
         print [(roc_classes[i],roc_scores[i]) for i in range(len(roc_scores)) if roc_classes[i] == 1 ]
             
-        ans = global_stuff.get_transpose([roc_classes, roc_scores])
+        ans = helper.get_transpose([roc_classes, roc_scores])
         return ans
 
 
@@ -384,7 +384,7 @@ class yW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
         pos_to_aa = self.get_var_or_file(eW, params, recalculate, True, False, True)
         pdb_name = self.get_param(params, 'pdb_name')
         chain_letter = self.get_param(params, 'chain_letter')
-        aux_folder = global_stuff.get_aux_folder(pdb_name, chain_letter)
+        aux_folder = helper.get_aux_folder(pdb_name, chain_letter)
         intrepid_file = aux_folder + 'intrepid.aux'
         f = open(intrepid_file, 'r')
         all_lines = f.readlines()
@@ -821,7 +821,7 @@ class bfW(wrapper.obj_wrapper):
         chain = self.get_var_or_file(cW, params, recalculate, True, False, always_recalculate)
         ans = []
         for i in range(len(chain)):
-            ans.append(global_stuff.get_representative_atom(chain[i]).get_bfactor())
+            ans.append(helper.get_representative_atom(chain[i]).get_bfactor())
         return ans
 
 
@@ -833,7 +833,7 @@ class bgW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
         chain = self.get_var_or_file(cW, params, recalculate, True, False, False)
         ans = []
         for i in range(len(chain)):
-            ans.append(global_stuff.get_representative_atom(chain[i]).coord)
+            ans.append(helper.get_representative_atom(chain[i]).coord)
         return ans
 
 
@@ -891,7 +891,7 @@ class biW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
                         col2 = msa[:,aa2]
                         d1 = re.sub(r'-','',col1)
                         d2 = re.sub(r'-','',col2)
-                        total = total + global_stuff.get_KL(d1,d2)
+                        total = total + helper.get_KL(d1,d2)
                         count = count + 1
             ans.append(total / float(count))
         return ans
@@ -954,7 +954,7 @@ class bmW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
         pdb.set_trace()
         node_features = self.get_var_or_file(jW, params, recalculate, True, True, False)
-        return global_stuff.normalize_mat(node_features)
+        return helper.normalize_mat(node_features)
                 
 # returns edge_features for a sample, but normalized within the sample
 class bnW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
@@ -962,7 +962,7 @@ class bnW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
         edge_features = self.get_var_or_file(kW, params, recalculate, True, True, False)
-        return global_stuff.normalize_mat(edge_features)
+        return helper.normalize_mat(edge_features)
 
 def print_stuff(x):
     #pdb.set_trace()

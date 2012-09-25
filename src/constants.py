@@ -5,7 +5,7 @@ Created on Mar 18, 2012
 '''
 ROC_CURVE_SCRIPT = './get_roc_from_python.r'
 ROC_INFO_SCRIPT = './get_roc_text.r'
-BIN_FOLDER = '../test6_again/'
+BIN_FOLDER = '../test6/'
 HOLDING_FOLDER = '../holding_folder/'
 AUX_FOLDER = '../data/catres-fam/'
 EVALUE = 1e-10

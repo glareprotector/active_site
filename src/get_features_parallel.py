@@ -2,6 +2,7 @@ import wc
 from parameters import the_params
 import new_new_objects as objects
 import global_stuff
+import helper
 from mpi4py import MPI
 import pdb
 
