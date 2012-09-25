@@ -55,6 +55,9 @@ pdb_names = ['2jcw']
 #chain_letters = ['A','A','A','A','A','A']
 chain_letters = ['A']
 
-the_params = param.param({'pdb_names':pdb_names, 'chain_letters':chain_letters, 'edge_feature_list':[features.xW], 'node_feature_list':[features.vW, features.uW, features.wW, features.zW], 'dist_cut_off':5})
+from parameters import the_params
+
+the_params.set_param('pdb_names', pdb_names)
+the_params.set_param('chain_letters', chain_letters)
 
 wc.get_stuff(generate_old_input_files,the_params, False, False, False, False)
