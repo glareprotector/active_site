@@ -2,7 +2,7 @@ from param import param
 
 import pdb, os, subprocess, constants
 import cPickle as pickle
-from global_stuff import print_stuff_dec, write_mat, write_vect, super_shorten
+from helper import print_stuff_dec, write_mat, write_vect, super_shorten
 import helper
 from Bio import AlignIO
 
