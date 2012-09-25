@@ -20,8 +20,8 @@ sample model::read_sample(){
   
   PyObject* pNodeFeatures = cached_obj_getter::call_wrapper(string("new_new_objects"), string("jW"), globals::pParams, globals::recalculate, true, true);
   
-  arbi_array<num2d> node_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("jW"), globals::pParams, globals::recalculate, true, true), true);
-  arbi_array<num2d> edge_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("kW"), globals::pParams, globals::recalculate, true, true), true);  
+  arbi_array<num2d> node_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("bmW"), globals::pParams, globals::recalculate, true, true), true);
+  arbi_array<num2d> edge_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("bnW"), globals::pParams, globals::recalculate, true, true), true);  
   arbi_array<int1d> true_states = cpp_caller::py_int_list_to_cpp_int_vect(cached_obj_getter::call_wrapper(string("new_new_objects"), string("oW"), globals::pParams, globals::recalculate, true, true), true);
   arbi_array<int2d> edge_list = cpp_caller::py_int_mat_to_cpp_int_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("iW"), globals::pParams, globals::recalculate, true, true), true);
 
@@ -974,13 +974,24 @@ int main(int argc, char* argv[]){
   
   My_Minimizer* minner = new My_Minimizer(&m);
 
+  arbi_array<num1d> w0_aa(m.theta_length);
 
   ofstream asdf("theta_shorter.csv");
   for(int i = 0; i < m.theta_length; i++){
     asdf<<w0[i]<<',';
+    w0_aa(i) = w0[i];
   }
   asdf.close();
+
+  arbi_array<num2d> node_marginals;
+  arbi_array<num3d> edge_marginals;
+  m.data(0).get_marginals(w0_aa, node_marginals, edge_marginals);
+  cout<<node_marginals<<endl;
+  cout<<edge_marginals(0,0,0)<<" "<<edge_marginals(0,1,0)<<" "<<edge_marginals(0,0,1)<<" "<<edge_marginals(0,1,1);
+  cout<<w0_aa<<endl;
   exit(1);
+
+
 
 
   
