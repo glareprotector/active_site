@@ -8,8 +8,8 @@ import wrapper
 import os
 from wrapper_decorator import dec
 import f as features
+import constants
 
-base_folder = '/mnt/work/fultonw/active_site/active_site/test/'
 
 class generate_old_input_files(wrapper.obj_wrapper):
 
@@ -24,11 +24,11 @@ class generate_old_input_files(wrapper.obj_wrapper):
             self.set_param(params, 'pdb_name', pdb_name)
             self.set_param(params, 'chain_letter', chain_letter)
 
-            the_folder = base_folder + pdb_name + '/'
+            the_folder = constants.BIN_FOLDER + pdb_name + '/'
 
             if not os.path.exists(the_folder):
                 os.makedirs(the_folder)
-
+            pdb.set_trace()
             node_features = self.get_var_or_file(objects.jW, params, False, False, False)
             transposed_node_features = helper.get_transpose(node_features)
             pdb.set_trace()
