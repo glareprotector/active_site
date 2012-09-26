@@ -983,13 +983,34 @@ int main(int argc, char* argv[]){
   }
   asdf.close();
 
+
+  arbi_array<num3d> edge_potentials = m.data(0).get_edge_potentials(w0_aa);
+  for(int i = 0; i < m.data(0).num_edges; i++){
+    cout<<edge_potentials(i,0,0)<<" "<<edge_potentials(i,0,1)<<" "<<edge_potentials(i,1,0)<<" "<<edge_potentials(i,1,1)<<endl;
+  }
+
+  //cout<<m.data(0).edge_features<<endl;
+
+  for(int i = 0; i < m.num_edge_features; i++){
+    //cout<<m.edge_map(0,0,i)<<" "<<m.edge_map(0,1,i)<<" "<<m.edge_map(1,0,i)<<" "<<m.edge_map(1,1,i)<<endl;
+  }
+
+  
+  cout<<w0_aa<<endl;
+  //exit(1);
+
+
   arbi_array<num2d> node_marginals;
   arbi_array<num3d> edge_marginals;
   m.data(0).get_marginals(w0_aa, node_marginals, edge_marginals);
   cout<<node_marginals<<endl;
   cout<<edge_marginals(0,0,0)<<" "<<edge_marginals(0,1,0)<<" "<<edge_marginals(0,0,1)<<" "<<edge_marginals(0,1,1);
   cout<<w0_aa<<endl;
-  exit(1);
+
+
+  cout<<m.data(0).get_edge_potential(edge_potentials,1,19,0,0)<<" "<<m.data(0).get_edge_potential(edge_potentials,1,19,0,1)<<" "<<m.data(0).get_edge_potential(edge_potentials,1,19,1,0)<<" "<<m.data(0).get_edge_potential(edge_potentials,1,19,1,1)<<endl;
+
+  //exit(1);
 
 
 
