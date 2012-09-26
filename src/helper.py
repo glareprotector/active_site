@@ -17,7 +17,7 @@ def normalize_mat(mat):
     height = len(mat)
     width = len(mat[0])
     normalized = [ [0 for i in range(width)] for j in range(height)]
-    pdb.set_trace()
+
     for i in range(width):
         a_mean_sum = 0.0
         for j in range(height):
