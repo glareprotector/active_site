@@ -7,7 +7,7 @@ num sample::get_node_potential(arbi_array<num2d>& node_potentials, int node, int
 }
 
 num sample::get_edge_potential(arbi_array<num3d>& edge_potentials, int node1, int node2, int state1, int state2){
-  if(node1 > node2){
+  if(node1 < node2){
     return edge_potentials(edge_to_pos(node1, node2), state1, state2);
   }
   else{
@@ -79,6 +79,8 @@ void sample::simulate_states(arbi_array<num1d> f_theta){
   arbi_array<num2d> f_node_marginals;
   arbi_array<num3d> f_edge_marginals;
 
+  
+
   get_marginals_BP(f_node_potentials, f_edge_potentials, f_node_marginals, f_edge_marginals);
   for(int i = 0; i < num_nodes; i++){
     if(num(rand() % 1000) / 1000.0 > f_node_marginals(i,1)){
@@ -122,6 +124,7 @@ arbi_array<num3d> sample::get_edge_potentials(arbi_array<num1d> theta){
       for(int k = 0; k < p_model->num_states; k++){
 	num temp = 0;
 	for(int l = 0; l < p_model->num_edge_features; l++){
+	  //cout<<fedge_features(i,l)<<" "<<theta(p_model->edge_map(j,k,l))<<endl;
 	  temp = temp + edge_features(i,l) * theta(p_model->edge_map(j,k,l));
 	}
 	edge_potentials(i,j,k) = temp;
@@ -138,6 +141,7 @@ void sample::get_marginals(arbi_array<num1d> theta, arbi_array<num2d>& node_marg
 
   arbi_array<num2d> node_potentials = get_node_potentials(theta);
   arbi_array<num3d> edge_potentials = get_edge_potentials(theta);
+  //cout<<node_potentials<<endl<<endl;
   get_marginals(node_potentials, edge_potentials, node_marginals, edge_marginals);
   //cout<<node_marginals<<endl;
 }
@@ -191,10 +195,14 @@ void sample::get_marginals_logistic_regression(arbi_array<num2d> node_potentials
 // not assuming that node_marginals and edge_marginals are pre-allocated
 void sample::get_marginals_mean_field(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals){
 
+  bool verbose = false;
+
   // allocate node_marginals and edge_marginals
   node_marginals = arbi_array<num2d>(num_nodes, p_model->num_states);
   edge_marginals = arbi_array<num3d>(num_edges, p_model->num_states, p_model->num_states);
 
+  //cout<<edge_potentials(0,0,0)<<" "<<edge_potentials(0,1,0)<<" "<<edge_potentials(0,0,1)<<" "<<edge_potentials(0,1,1);
+  //exit(1);
   arbi_array<num1d> log_new_marginals(p_model->num_states);
 
   // set initial marginals to normalized potentials
@@ -221,8 +229,17 @@ void sample::get_marginals_mean_field(arbi_array<num2d> node_potentials, arbi_ar
 
   }
 
+  int aa = 1,bb=19,cc=1,dd=0;
+  if(verbose)cout<<"atro"<<endl;
+  if(verbose)cout<<get_edge_potential(edge_potentials, aa,bb,cc,dd)<<endl;
+  dd = 1;
+  if(verbose)cout<<get_edge_potential(edge_potentials,aa,bb,cc,dd)<<endl;
+
+  if(verbose)cout<<"intial node marginals:"<<endl;
+  if(verbose)cout<<node_marginals<<endl;
 
   for(int i = 0; i < p_model->mean_field_max_iter; i++){
+    if(verbose)cout<<i<<" "<<i<<endl;
     for(int j = 0; j < num_nodes; j++){
 
       // calculate unnormalized log marginals
@@ -234,6 +251,11 @@ void sample::get_marginals_mean_field(arbi_array<num2d> node_potentials, arbi_ar
 	  int nbr = node_to_neighbors(j)(l);
 	  for(int m = 0; m < p_model->num_states; m++){
 	    log_new_marginals(k) += (node_marginals)(nbr,m) * (get_edge_potential(edge_potentials,j,nbr,k,m));
+	    if(j <= 1 && k == 1){
+	      if(verbose)cout<<"\nnode: "<<j<<" state: "<<k<<" marg: "<<node_marginals(j,k)<<endl;
+	      if(verbose)cout<<"nbr: "<<nbr<<endl;
+	      if(verbose)cout<<"nbr state: "<<m<<" "<<node_marginals(nbr,m)<<" "<<get_edge_potential(edge_potentials,j,nbr,k,m)<<" "<<node_marginals(1,0)<<endl;
+	    }
 	  }
 	}
 	log_new_marginals(k) += get_node_potential(node_potentials,j,k);
