@@ -952,7 +952,7 @@ class bmW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        pdb.set_trace()
+        
         node_features = self.get_var_or_file(jW, params, recalculate, True, True, False)
         return helper.normalize_mat(node_features)
                 
