@@ -12,7 +12,6 @@ wc = wrapper.wrapper_catalog(useless, param.param({}))
 
 def get_stuff(wrapper_class, params, recalculate, to_pickle, to_filelize, always_recalculate = False):
     params.set_param('which_wrapper_class', wrapper_class)
-    pdb.set_trace()
     wc_used_keys, wc_all_keys, wrapper_instance = wc.constructor(params, True, False, False)
 
     try:
