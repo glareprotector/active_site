@@ -763,7 +763,8 @@ class My_Minimizer: public Minimizer{
     }
     else{
       if(fabs(p_model->prev_obj-objective)< 0.00001){
-	//exit(0);
+	cout<<" OBJECTIVE FUNCTION ISN'T CHANGING.  EXITING!"<<endl;
+	exit(1);
       }
       p_model->prev_obj = objective;
     }
