@@ -305,7 +305,9 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
       scores_ar(i) = scores[i];
     }
 
-
+    // stuff above is raw_report, which returns a struct.
+    // at this point can either make some sort of structure and return it and let a typemap convert it to formatted raw result python form(make a struct for raw results)
+    // or, the original report function would call function to get that struct and call the below stuff
     
 
     cpp_caller::set_param(globals::pParams, string("scores"), &scores_ar, globals::NUM_VECT);
@@ -354,6 +356,14 @@ void model::assign(int num_folds, int which_fold){
   num_training = training_indicies.size().i0;
   num_testing = testing_indicies.size().i0;
 }
+
+void model::get_master_data_list();
+void model::get_master_data_list(arbi_array<string1d> specified_testing_list, arbi_array<string1d> specified_training_list);
+void model::get_training_and_testing_indicies(arbi_array<string1d> master_list);
+void model::get_training_and_testing_indicies(arbi_array<string1d> master_list, arbi_array<string1d> specified_testing_list, arbi_array<string1d> specified_training_list);
+void model::get_do_i_care(arbi_array<string1d> master_list);
+void model::get_own_training_and_testing_indicies(arbi_array<int1d> testing_indicies, arbi_array<int1d> training_indicies)
+
 
 // future usage: data_list is stored as param.  one by one, set pdb_name, call sample constructor with those params, which will be global
 
@@ -624,7 +634,7 @@ arbi_array<num1d> model::get_dReg_dTheta(arbi_array<num1d> theta){
 num model::get_L(int which_obj, arbi_array<num1d> theta){
 
   if(proc_id == 0){
-    cout<<"which_obj: "<<which_obj<<endl;
+    //cout<<"which_obj: "<<which_obj<<endl;
   }
 
   num ans = 0, temp;
