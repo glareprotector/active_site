@@ -10,7 +10,8 @@
 #include "mpi.h" 
 #endif
 
-sample model::read_sample(){
+// pParams should specify pdb_name and chain_letter
+sample model::read_sample(Py_Object* pParams){
 
   // keep for now only bc sample for now takes these in as input
   string pdb_name = cpp_caller::CPPString_From_PyString(cpp_caller::get_param(globals::pParams, string("pdb_name")));
@@ -108,7 +109,7 @@ void model::normalize(){
 }
 
 // writes to specified folder the scores for each score as well as their true class
-void model::report(arbi_array<num1d> theta, int iteration, num obj){
+void model::get_result_struct(arbi_array<num1d> theta){
 
 
 
@@ -305,10 +306,21 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
       scores_ar(i) = scores[i];
     }
 
+    // each pdb represented by a length 2 list ERROR
+    return results_struct(scores_ar, true_classes_ar, parsed_pdb_names, pdbs);
+  }
+
+}
     // stuff above is raw_report, which returns a struct.
     // at this point can either make some sort of structure and return it and let a typemap convert it to formatted raw result python form(make a struct for raw results)
     // or, the original report function would call function to get that struct and call the below stuff
-    
+   
+
+void emit_results(results_struct results){ 
+
+  if(proc_id == 0){
+
+    // ERROR: pass pdbs, instead of one parameter for pdb_name and one parameter for chain_letter
 
     cpp_caller::set_param(globals::pParams, string("scores"), &scores_ar, globals::NUM_VECT);
     cpp_caller::set_param(globals::pParams, string("true_states"), &true_classes_ar, globals::INT_VECT);
@@ -357,7 +369,7 @@ void model::assign(int num_folds, int which_fold){
   num_testing = testing_indicies.size().i0;
 }
 
-void model::get_master_data_list();
+void model::get_master_data_list(); // gets data list in the form of [pdb_name, chain_letter] pairs
 void model::get_master_data_list(arbi_array<string1d> specified_testing_list, arbi_array<string1d> specified_training_list);
 void model::get_training_and_testing_indicies(arbi_array<string1d> master_list);
 void model::get_training_and_testing_indicies(arbi_array<string1d> master_list, arbi_array<string1d> specified_testing_list, arbi_array<string1d> specified_training_list);
@@ -519,10 +531,26 @@ void model::load_data(){
 
 }
 
+// data will be specified as either a raw data_file location, or explicit training/testing data in the form of lists of (pdb_name, chain_letter)
+// a parameter "mode" will specify which one of these we are using
+model::model(Py_Object* pParams, int mode){
+  record_basic_params(pParams);
+  if(mode == 0){
+    arbi_array<string1d> testing_names = cpp_caller::py_string_list_to_cpp_string_vect(cpp_caller::get_param(pParams, string("testl")), true);
+    arbi_array<string1d> training_names = cpp_caller::py_string_list_to_cpp_string_vect(cpp_caller::get_param(pParams, string("trnl")), true);
+    this->master_data_list = get_master_list(testing_names, training_names);
+    this->set_training_and_testing_indicies(this->master_data_list);
+  }
+  else if(mode == 0){
+    
+    
+  this->set_idx_i_care();
+  this->get_own_training_and_testing_indicies(arbi_array<int1d> idx_i_care);
+
 
   
 // params should have pdb list.  retrieve the list, set individual
-model::model(){
+model::model(Py_Object* pParams){
 
   this->which_reg = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wreg")));
   this->num_states = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("ns")));
@@ -563,7 +591,7 @@ model::model(){
   this->theta_length = idx;
 
   cout<<node_map<<endl;
-  //exit(1);
+
 
   
   normalize();
