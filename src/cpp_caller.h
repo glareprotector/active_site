@@ -72,6 +72,15 @@ class cpp_caller{
   }
 
 
+  // returns attribute of object
+  static PyObject* get_object_attr(PyObject* pObj, string attr_name){
+    PyObject* pAttr_name = PyString_FromCPPString(attr_name);
+    PyObject* pResult = PyObject_GetAttr(pObj, pAttr_name);
+    Py_DECREF(pAttr_name);
+    return pResult;
+  }
+
+
   // returns new empty param object
   static PyObject* get_new_empty_param(){
     PyObject* pParamDict = PyDict_New();
@@ -237,6 +246,20 @@ class cpp_caller{
     return pMat;
   }
 
+
+  static PyObject* cpp_num_mat_to_py_float_mat(arbi_array<num2d> x){
+    PyObject* pX = PyList_New(x.size().i0);
+    for(int i = 0; i < x.size().i0; i++){
+      PyObject* pY = PyList_New(x.size().i1);
+      for(int j = 0; j < x.size().i1; j++){
+	PyList_SetItem(pY, j, PyFloat_FromDouble(x(i,j)));
+      }
+      PyList_SetItem(pX, i, pY);
+    }
+    return pX;
+  }
+
+
   // convert python float matrix(list of lists) to c++ matrix of nums
   static arbi_array<num2d> py_float_mat_to_cpp_num_mat(PyObject* pMat, bool decref = false){
     if(pMat == NULL) throw 20;
@@ -257,7 +280,7 @@ class cpp_caller{
 
 
   // convert c++ matrix of nums to python matrix(list of lists) of floats
-  static PyObject* cpp_int_mat_to_py_int_mat(arbi_array<num2d> x){
+  static PyObject* cpp_float_mat_to_py_float_mat(arbi_array<int2d> x){
     PyObject* pX = PyList_New(x.size().i0);
     for(int i = 0; i < x.size().i0; i++){
       PyObject* pY = PyList_New(x.size().i1);
@@ -306,9 +329,52 @@ class cpp_caller{
     //cout<<"3333"<<endl;
     return string(PyString_AsString(pStr));
   }
+
+  // returns new reference to python pdb_name_struct
+  static PyObject* py_pdb_name_struct_from_cpp_pdb_name_struct(pdb_name_struct pdb){
+    string pdb_name = pdb.pdb_name;
+    string chain_letter = pdb.chain_letter;
+    PyObject* pPdb_name = PyString_FromCPPString(pdb_name);
+    PyObject* pChain_letter = PyString_FromCPPString(chain_letter);
+    // ERROR
+    PyObject* pConstructor = cpp_caller::get_module_PyObject(string("cross_validation_pseudo"), string("pdb_name_struct"));
+    PyObject* pResult = PyObject_CallFunctionObjArgs(pConstructor, pPdb_name, pChain_letter);
+    Py_DECREF(pConstructor);
+    Py_DECREF(pPdb_name);
+    Py_DECREF(pChain_letter);
+    return pResult;
+  }
+
+  // need to convert python pdb_name_struct list to c++ version.  don't need to do reverse but oh well
+  static pdb_name_struct cpp_pdb_name_struct_from_py_pdb_name_struct(PyObject* pPdb){
+
+    PyObject* pPdb_name = get_object_attr(pPdb, string("pdb_name"));
+    PyObject* pChain_letter = get_object_attr(pPdb, string("chain_letter"));
+    pdb_name_struct ans = pdb_name_struct(CPPString_From_PyString(pPdb_name), CPPString_From_PyString(pChain_letter));
+    Py_DECREF(pPdb_name);
+    Py_DECREF(pChain_letter);
+    return ans;
+  }
+
+  static arbi_array<pdb_name_struct[1]> py_pdb_name_struct_list_to_cpp_pdb_name_struct_list(PyObject* pList){
+    
+    if(pList == NULL) throw 20;
+    int len = PyList_Size(pList);
+    arbi_array<pdb_name_struct[1]> result(len);
+    for(int i = 0; i < len; i++){
+      result(i) = cpp_caller::cpp_pdb_name_struct_from_py_pdb_name_struct(PyList_GetItem(pList, i));
+    }
+    if(decref) Py_DECREF(pList);
+    return result;
+  }
+      
+
   
 
 };
+
+
+
 
 class cached_obj_getter: public cpp_caller{
  public:
