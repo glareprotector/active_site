@@ -33,6 +33,19 @@ typedef num num3d[1][1][1];
 typedef string string1d[1];
 typedef string string2d[1][1];
 
+struct pdb_name_struct{
+  
+  string pdb_name;
+  string chain_letter;
+
+};
+
+struct results_struct{
+  arbi_array<int1d> scores;
+  arbi_array<int1d> true_classes;
+  arbi_array<pdb_name_struct[1]> pdb_structs;
+  arbi_array<int1d> sample_lengths;
+}
 
 
 
