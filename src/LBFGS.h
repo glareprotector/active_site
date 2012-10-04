@@ -238,7 +238,7 @@ void Minimizer::ApproximateGradient (vector<double> &og,
 }
 
 /* LBFGS routine */
-void Minimizer::LBFGS (vector<double> &x0, const int max_iterations){
+arbi_array<num1d> Minimizer::LBFGS (vector<double> &x0, const int max_iterations){
 
 	time_t start, end;
 	time(&start);
@@ -415,6 +415,17 @@ if (proc_id==0)
 	}
 
 	x0 = x[k%2];
+
+
+
+// copy x into an arbi_array
+arbi_array<num1d> ans(x0.size());
+for(int i = 0; i < x0.size(); i++){
+  ans(i) = x0[i];
+ }
+
+return ans;
+
 }
 
 /* Standard linear algebra */
