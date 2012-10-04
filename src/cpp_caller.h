@@ -7,6 +7,7 @@
 //#include <string.h>
 //#include "nums.h"
 #include <set>
+#include "globals.h"
 
 typedef double num;
 using namespace std;

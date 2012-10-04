@@ -607,6 +607,20 @@ void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<nu
   dL_dEdge_Mu = 0;
 }
 
+arbi_array<num1d> sample::get_L_expected_distance_node_importance(){
+  arbi_array<num1d> imp(num_nodes);
+  PyObject* pClosests = cached_obj_getter::call_wrapper(string("new_new_objects"), string("aqW"), globals::pParams, globals::recalculate, false, false, false);
+  arbi_array<num1d> closest_dists = cpp_caller::py_float_list_to_cpp_num_vect(pClosests);
+  Py_DECREF(pClosests);
+
+  num c = 2;
+
+  for(int i = 0; i < num_nodes; i++){
+    imp(i) = 1.0 / (1 + c*pow(closest_dists(i),2));
+  }
+  return imp;
+}
+
 num sample::get_L_expected_distance(arbi_array<num1d> theta){
 
 
@@ -632,7 +646,8 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta){
   arbi_array<num1d> closest_dists = cpp_caller::py_float_list_to_cpp_num_vect(pClosests);
   Py_DECREF(pClosests);
 
-
+  // weigh nodewise loss based on how far they are from a true site
+  arbi_array<num1d> imp = get_L_expected_distance_node_importance();
 
   for(int i = 0 ; i < num_nodes; i++){
     
@@ -647,7 +662,7 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta){
       exp_val += cumulative * (sorted_distances(i,j) - sorted_distances(i,j-1));
     }
 
-    loss += smooth_f(fabs(exp_val - closest_site_dist));
+    loss += imp(i) * smooth_f(fabs(exp_val - closest_site_dist));
 
   }
 
@@ -691,6 +706,10 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi
   arbi_array<num1d> closest_dists = cpp_caller::py_float_list_to_cpp_num_vect(pClosests);
   Py_DECREF(pClosests);
 
+
+  // weigh nodewise loss based on how far they are from a true site
+  arbi_array<num1d> imp = get_L_expected_distance_node_importance();
+
   
   for(int i = 0; i < num_nodes; i++){
         
@@ -726,7 +745,7 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi
     //node_seconds.scale(d_smooth_f(inside - closest_site_dist));
     node_seconds *= (d_smooth_f(inside - closest_site_dist));
     for(int j = 0; j < num_nodes; j++){
-      dL_dNode_Mu(j,0) += node_seconds(j);
+      dL_dNode_Mu(j,0) += imp(i) * node_seconds(j);
     }
 
   }

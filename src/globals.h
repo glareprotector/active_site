@@ -12,7 +12,8 @@
 #include "lite_fixed.hpp"
 
 
-
+#include <set>
+#include <string>
 
 //typedef  vector<vector<vector<vector<double>>>> num4d_array;
 
@@ -37,21 +38,22 @@ typedef string string2d[1][1];
 
 namespace globals{
   
-  string data_folder;
-  string pdb_list_file;
-  int mean_field_max_iter;
-  int num_folds;
-  int which_fold;
-  string results_folder;
-  num reg_constant;
-  int which_obj;
-  int which_infer;
-  double eps;
-  PyObject* pParams;
-  bool recalculate;
-  bool recalculate_nodewise_loss_f;
+  extern string data_folder;
+  extern string pdb_list_file;
+  extern int mean_field_max_iter;
+  extern int num_folds;
+  extern int which_fold;
+  extern string results_folder;
+  extern num reg_constant;
+  extern int which_obj;
+  extern int which_infer;
+  extern double eps;
+  extern PyObject* pParams;
+  extern bool recalculate;
+  extern bool recalculate_nodewise_loss_f;
 
-  int fdsa;
+
+  extern int fdsa;
   
 
 
@@ -63,7 +65,11 @@ namespace globals{
   const int NUM_VECT = 5;
   const int STRING_MAT = 6;
 
+  void init(int, char**);
+
+  /*
   void init(int argc, char** argv){
+    
     data_folder = std::string("/home/fultonw/active_site/active_site/test/");
     pdb_list_file = std::string("catres_six.pdb_list");
     mean_field_max_iter = 100;
@@ -76,7 +82,7 @@ namespace globals{
     which_infer = 0;
     eps = 1.11e-16;
     fdsa = 160;
-  }
+    }*/
 
 }
 

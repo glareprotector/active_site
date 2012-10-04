@@ -117,6 +117,8 @@ class sample{
   // separate set of functions for each obj function
   void get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu);
   num get_L_expected_distance(arbi_array<num1d> theta);
+  arbi_array<num1d> get_L_expected_distance_node_importance();
+
   
   void get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu);
   num get_L_nodewise(arbi_array<num1d> theta);
