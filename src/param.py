@@ -3,7 +3,7 @@ import global_stuff
 import helper
 class param(object):
     
-    def __init__(self, param_dict):
+    def __init__(self, param_dict={}):
         self.param_dict = param_dict
         
     def get_param(self, which):
@@ -11,6 +11,9 @@ class param(object):
     
     def get_keys(self):
         return self.param_dict.keys()
+
+    def get_sorted_keys(self):
+        return sorted(self.param_dict.keys())
     
     def set_param(self,key,val):
         self.param_dict[key] = val
@@ -23,6 +26,13 @@ class param(object):
     
     def __str__(self):
         return helper.shorten(str(sorted(self.param_dict.iteritems())))
+
+    # returns a list of the keys in sorted key order
+    def sorted_listify(self):
+        res = []
+        for key in self.get_sorted_keys():
+            res.append(self.get_param(key))
+        return res
     
     def get_copy(self):
         to_return = param({})
@@ -56,8 +66,17 @@ class param(object):
 
     @classmethod
     def merge(cls, A, B):
+        import pdb
+        pdb.set_trace()
         toReturn = cls.get_copy(A)
         for key in cls.get_keys(B):
+            toReturn.set_param(key, B.get_param(key))
+        return toReturn
+
+
+    def merge_non_class(self, B):
+        toReturn = self.get_copy()
+        for key in B.get_keys():
             toReturn.set_param(key, B.get_param(key))
         return toReturn
         

@@ -59,6 +59,18 @@ class model;
 class sample{
 
  public:
+
+
+  void register_pys(PyObject* pMaker, PyObject* pParams, bool recalculate);
+  void unregister_pys();
+  PyObject* get_pMaker();
+  PyObject* get_pParams();
+  bool get_recalculate();
+  PyObject* pMaker_cur;
+  PyObject* pParams_cur;
+  int recalculate_cur;
+
+
   
   void simulate_states(arbi_array<num1d> f_theta);
 
@@ -83,18 +95,27 @@ class sample{
   model* p_model;
   num get_node_potential(arbi_array<num2d>&, int, int);
   num get_edge_potential(arbi_array<num3d>&, int, int, int, int);
-  sample(model*, arbi_array<num2d>, arbi_array<num2d>, arbi_array<int2d>, arbi_array<int1d>, string, string);
+  sample(PyObject*, PyObject*, bool, model*, arbi_array<num2d>, arbi_array<num2d>, arbi_array<int2d>, arbi_array<int1d>, string, string);
   sample();
 
   arbi_array<num2d> get_node_potentials(arbi_array<num1d> theta);
   arbi_array<num3d> get_edge_potentials(arbi_array<num1d> theta);
-  void get_marginals(arbi_array<num1d> theta, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals);
-  void get_marginals(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals);
+  void get_marginals(arbi_array<num1d> theta, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals, int which_infer);
+  void get_marginals(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals, int which_infer);
+
+
+  // these 3 are the functions that interface to outside.  they are same as the private ones except they call register and unregister.  so these 3 are wrappers
+  void get_marginals(PyObject* pMaker, PyObject* pParams, bool recalculate, arbi_array<num1d> theta, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals, int which_infer);
+  num get_L(PyObject* pMaker, PyObject* pParams, bool recalculate, int which_obj, arbi_array<num1d>& theta);
+  arbi_array<num1d> get_dL_dTheta(PyObject* pMaker, PyObject* pParams, bool recalculate, int which_obj, arbi_array<num1d> theta);
+
+
+
   
   num get_L(int which_obj, arbi_array<num1d>& theta);
   void get_dL_dMu(int which_obj, arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu);
   arbi_array<num1d> get_dL_dTheta(int which_obj, arbi_array<num1d> theta);
-  arbi_array<num1d> get_dL_dTheta_Perturb(int which_obj, arbi_array<num1d> theta);
+  arbi_array<num1d> get_dL_dTheta_Perturb(int which_obj, arbi_array<num1d> theta, int which_infer);
 
   void pseudo_likelihood_helper(arbi_array<num1d> theta, arbi_array<num2d>& node_pseudos);
   num get_L_pseudo(arbi_array<num1d> theta);
@@ -108,20 +129,20 @@ class sample{
   void get_dPot_dTheta(arbi_array<num1d> theta, arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num3d>& dNode, vector< vector< vector< vector< num> > > > & dEdge);
 
   // functions related to likelihood
-  num get_data_likelihood(arbi_array<num1d> theta);
+  num get_data_likelihood(arbi_array<num1d> theta, int which_infer);
   arbi_array<num1d> get_data_likelihood_gradient(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals);
-  arbi_array<num1d> get_data_likelihood_gradient(arbi_array<num1d> theta);
+  arbi_array<num1d> get_data_likelihood_gradient(arbi_array<num1d> theta, int which_infer);
   num get_log_Z(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals);
   num get_data_potential(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials);
 
   // separate set of functions for each obj function
   void get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu);
-  num get_L_expected_distance(arbi_array<num1d> theta);
+  num get_L_expected_distance(arbi_array<num1d> theta, int which_infer);
   arbi_array<num1d> get_L_expected_distance_node_importance();
 
   
   void get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu);
-  num get_L_nodewise(arbi_array<num1d> theta);
+  num get_L_nodewise(arbi_array<num1d> theta, int which_infer);
 
   num smooth_f(num x);
   num d_smooth_f(num x);

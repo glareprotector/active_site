@@ -5,7 +5,7 @@ import global_stuff
 import helper
 from mpi4py import MPI
 import pdb
-
+import helper
 
 
 comm = MPI.COMM_WORLD
@@ -18,8 +18,8 @@ data_list = wc.get_stuff(objects.mW, the_params, global_stuff.recalculate, True,
 works = []
 for i in range(len(data_list)):
     if i % size == rank:
-        pdb_name = data_list[i][0]
-        chain_letter = data_list[i][1]
+        pdb_name = data_list[i].pdb_name
+        chain_letter = data_list[i].chain_letter
         try:
 
             the_params.set_param('pdb_name', pdb_name)
@@ -46,5 +46,5 @@ if rank == 0:
     ans = []
     for elt in root_works:
         ans = ans + elt
-    global_stuff.write_mat([[x] for x in ans], 'catres_works.pdb_list')
+    helper.write_mat([[x] for x in ans], 'catres_works.pdb_list')
         

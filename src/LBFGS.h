@@ -14,10 +14,7 @@
 
 using namespace std;
 
-// MPI
-int num_procs;
-int proc_id;
-// end 
+ 
 
 void Error (const char *error_msg);
 
@@ -48,6 +45,42 @@ double rt = 1e-8;
 
 class Minimizer {
 
+ protected:
+
+  void register_pys(PyObject* pMaker, PyObject* pParams, bool recalculate){
+    pMaker_cur = pMaker;
+    pParams_cur = pParams;
+    recalculate_cur = recalculate;
+  }
+  
+  void unregister_pys(){
+    pMaker_cur = NULL;
+    pParams_cur = NULL;
+    recalculate_cur = -1;
+  }
+  
+  PyObject* get_pMaker(){
+    assert(pMaker_cur != NULL);
+    return pMaker_cur;
+  }
+
+  PyObject* get_pParams(){
+    assert(pParams_cur != NULL);
+    return pParams_cur;
+  }
+
+
+  bool get_recalculate(){
+    assert(recalculate_cur != -1);
+    return recalculate_cur;
+  }
+
+  PyObject* pMaker_cur;
+  PyObject* pParams_cur;
+  int recalculate_cur;
+
+ private:
+
   bool use_preconditioner;
   int N;
   int M;			   
@@ -59,14 +92,14 @@ class Minimizer {
   double min_improvement_ratio;
   int max_line_search_evaluations;
 
-  virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length) = 0;
+  virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length, int which_infer) = 0;
   virtual void Report (const string &s) = 0;
   //virtual void ComputeGradient (vector<double> &g, const vector<double> &x, bool bCalculateGate) = 0;
-  virtual void ComputeGradient (vector<double> &g, const vector<double> &x) = 0;
+  virtual void ComputeGradient (vector<double> &g, const vector<double> &x, int which_obj, int which_reg) = 0;
   virtual void ComputeHessianDiagonal (vector<double> &h, const vector<double> &x){ h = x; }
-  virtual double ComputeFunction  (const vector<double> &x) = 0;
+  virtual double ComputeFunction  (const vector<double> &x, int which_obj, int which_reg) = 0;
 
-  double LineSearch (const vector<double> &x, const vector<double> &d, const vector<double> &g, double &f_curr);
+  double LineSearch (const vector<double> &x, const vector<double> &d, const vector<double> &g, double &f_curr, int which_obj, int which_reg);
 
 public:
   Minimizer(bool use_preconditioner,
@@ -81,10 +114,9 @@ public:
   
   virtual ~Minimizer(){}
   
-  void LBFGS (vector<double> &x0,                      /* initial guess of solution    */
-	      const int max_iterations = 100);         /* maximum number of iterations */
-    
-  void ApproximateGradient (vector<double> &g, const vector<double> &x, const double EPSILON = 1e-4);
+  arbi_array<num1d> LBFGS (PyObject* pMaker, PyObject* pParams, bool recalculate, vector<double> &x0,                      /* initial guess of solution    */
+			   const int max_iterations, int which_obj, int which_reg, int which_infer);         /* maximum number of iterations */
+  void ApproximateGradient (vector<double> &g, const vector<double> &x, const double EPSILON, int which_obj, int which_reg);
 };
 
 /* Standard linear algebra */
@@ -109,7 +141,7 @@ Minimizer::Minimizer(bool use_preconditioner, const int M, const double term_rat
   
 /* Modified cubic backtracking line search */
 double Minimizer::LineSearch (const vector<double> &x, const vector<double> &d, 
-			      const vector<double> &g, double &f_curr)
+			      const vector<double> &g, double &f_curr, int which_obj, int which_reg)
 {
   int num_evaluations = 0;
   const double dot_prod = DotProduct (d, g);
@@ -120,7 +152,7 @@ double Minimizer::LineSearch (const vector<double> &x, const vector<double> &d,
 
   /* First, try a full Newton step. */
   double t_new1 = 1;
-  double f_new1 = ComputeFunction (x + d * t_new1);
+  double f_new1 = ComputeFunction (x + d * t_new1, which_obj, which_reg);
   if (f_new1 < best_f){ best_f = f_new1; best_t = t_new1; }
   if (f_new1 <= f_curr + alpha * t_new1 * dot_prod) sufficient_decrease = true;
 
@@ -158,7 +190,7 @@ double Minimizer::LineSearch (const vector<double> &x, const vector<double> &d,
   if (!increasing_step) t_new1 = max (gamma1 * t_new2, min (gamma2 * t_new2, t_new1));
   
   /* Compute the new function value, check for sufficient decrease, and check for termination. */
-  f_new1 = ComputeFunction (x + d * t_new1);
+  f_new1 = ComputeFunction (x + d * t_new1, which_obj, which_reg);
   if (f_new1 < best_f){ best_f = f_new1; best_t = t_new1; }
   if (f_new1 <= f_curr + alpha * t_new1 * dot_prod) sufficient_decrease = true;
   if (sufficient_decrease && f_new1 >= f_new2 * min_improvement_ratio){ f_curr = best_f; return best_t; }
@@ -194,7 +226,7 @@ double Minimizer::LineSearch (const vector<double> &x, const vector<double> &d,
     if (!increasing_step) t_new1 = max (gamma1 * t_new2, min (gamma2 * t_new2, t_new1));
 
     /* Compute the new function value, check for sufficient decrease, and check for termination. */
-    f_new1 = ComputeFunction (x + d * t_new1);
+    f_new1 = ComputeFunction (x + d * t_new1, which_obj, which_reg);
     if (f_new1 < best_f){ best_f = f_new1; best_t = t_new1; }
     if (f_new1 <= f_curr + alpha * t_new1 * dot_prod) sufficient_decrease = true;
     if (sufficient_decrease && f_new1 * min_improvement_ratio >= f_new2){ f_curr = best_f; return best_t; }
@@ -207,7 +239,7 @@ double Minimizer::LineSearch (const vector<double> &x, const vector<double> &d,
 //void Minimizer::ApproximateGradient (vector<double> &g, 
 void Minimizer::ApproximateGradient (vector<double> &og, 
 				     const vector<double> &x, 
-				     const double EPSILON){
+				     const double EPSILON, int which_obj, int which_reg){
 
   /*
   ofstream myfile;
@@ -218,7 +250,7 @@ void Minimizer::ApproximateGradient (vector<double> &og,
 
 
 
-  double base = ComputeFunction (x);
+  double base = ComputeFunction (x, which_obj, which_reg);
   vector<double> x_copy = x;
   for(int i = 0; i < x_copy.size(); i++){
     //cout<<x[i]<<" ";
@@ -227,7 +259,7 @@ void Minimizer::ApproximateGradient (vector<double> &og,
   for (int i = 0; i < 80; i++){
     x_copy[i] += EPSILON;
     //g[i] = (ComputeFunction (x_copy) - base) / EPSILON;
-	double f = ComputeFunction (x_copy);
+    double f = ComputeFunction (x_copy, which_obj, which_reg);
 	double g = (f - base) / EPSILON;
 	x_copy[i] = x[i];
 	//og[i]=g;
@@ -238,7 +270,12 @@ void Minimizer::ApproximateGradient (vector<double> &og,
 }
 
 /* LBFGS routine */
-arbi_array<num1d> Minimizer::LBFGS (vector<double> &x0, const int max_iterations){
+arbi_array<num1d> Minimizer::LBFGS (PyObject* pMaker, PyObject* pParams, bool recalculate, vector<double> &x0, const int max_iterations, int which_obj, int which_reg, int which_infer){
+
+
+  register_pys(pMaker, pParams, recalculate);
+
+
 
 	time_t start, end;
 	time(&start);
@@ -257,7 +294,7 @@ arbi_array<num1d> Minimizer::LBFGS (vector<double> &x0, const int max_iterations
 	vector<double> h (N, 0.0);                               /* hessian diagonal            */
 
 	double f_prev = 0;
-	double f_curr = ComputeFunction (x0);
+	double f_curr = ComputeFunction (x0, which_obj, which_reg);
 
 if (proc_id==0)
 {
@@ -279,7 +316,7 @@ if (proc_id==0)
 
 		/* STEP ONE: Compute new gradient vector */
 		//ComputeGradient (g[k%M], x[k%2], bCalculateGate);
-		ComputeGradient (g[k%M], x[k%2]);
+	  ComputeGradient (g[k%M], x[k%2], which_obj, which_reg);
 
 if (proc_id==0)
 {
@@ -297,7 +334,7 @@ if (proc_id==0)
 
 	for (int i = 7; i < 12; i++)
 	  //ApproximateGradient (aa[i], x[k%2], pow(10.0,(double)-i));
-	  ApproximateGradient (g[k%M], x[k%2], pow(10.0,(double)-i));
+	  ApproximateGradient (g[k%M], x[k%2], pow(10.0,(double)-i), which_obj, which_reg);
 
 	//for (int i = 0; i < 200; i++){//g[k%M].size(); i++){
 	//  cerr << g[k%M][i];
@@ -348,7 +385,7 @@ if (proc_id==0)
     		//if (proc_id==0){cerr << "&& d:";for (int i=0; i<15; i++) cerr << d[i]<<","; cerr << endl;}
 		d = d * -1.0;
 		f_prev = f_curr;
-		double step = LineSearch (x[k%2], d, g[k%M], f_curr);
+		double step = LineSearch (x[k%2], d, g[k%M], f_curr, which_obj, which_reg);
 		x[(k+1)%2] = x[k%2] + d * step;
 
 		iterations++;
@@ -362,7 +399,7 @@ if (proc_id==0)
 	time(&start);
 }
 
-		Report (x[k%2], iterations, f_curr, step);
+                Report (x[k%2], iterations, f_curr, step, which_infer);
 		//bCalculateGate = false;
 		if (iterations >= max_iterations){ 
 		  oss.str("");
@@ -419,10 +456,13 @@ if (proc_id==0)
 
 
 // copy x into an arbi_array
-arbi_array<num1d> ans(x0.size());
+int x0size = x0.size();
+arbi_array<num1d> ans(x0size);
 for(int i = 0; i < x0.size(); i++){
   ans(i) = x0[i];
  }
+
+unregister_pys();
 
 return ans;
 

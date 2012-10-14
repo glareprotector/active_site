@@ -1,13 +1,16 @@
 #include "test.h"
 
+#include "cpp_caller.h"
 
-set<string> cpp_caller::added_paths;
+// set<string> cpp_caller::added_paths;
 
-int f(int x, MPI_Comm comm){
-  int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-  std::cout<<rank<<" "<<size<<std::endl;
+
+//int f(int x, MPI_Comm comm, arbi_array<num1d> ar){
+int f(int x, arbi_array<num1d> ar){
+  //int rank, size;
+  //MPI_Comm_rank(comm, &rank);
+  //MPI_Comm_size(comm, &size);
+  //std::cout<<rank<<" "<<size<<std::endl;
   
   PyObject* pSysPath= cpp_caller::_get_module_PyObject(string("sys"), string("path"));
   //for(int i = 0; i < PyList_Size(pSysPath); i++){
@@ -19,10 +22,15 @@ int f(int x, MPI_Comm comm){
 
   double y = 1.0;
   double x_sum = 0;
-  MPI_Barrier(comm);
-  MPI_Reduce(&y, &x_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
-  cout<<rank<<" "<<x_sum<<endl;
-  cout<<" END "<<endl;
+  //MPI_Barrier(comm);
+  //MPI_Reduce(&y, &x_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+  //cout<<rank<<" "<<x_sum<<endl;
+  //cout<<" END222222 "<<rank<<" "<<x_sum<<endl;
+
+
+  cout<<" ARRAY: "<<ar<<endl;
 
   return x+1;
-}
+  }
+
+#include "crf_lib.cpp"

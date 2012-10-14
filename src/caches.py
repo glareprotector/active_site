@@ -25,7 +25,17 @@ class file_cache_for_wrapper(object):
         if object_key in self.files_created:
             return True
         elif not recalculate:
-            if os.path.isfile(self.the_wrapper.get_file_location(object_key)):
+
+            location = self.the_wrapper.get_file_location(object_key)
+            # check if we want to override
+            if self.the_wrapper.whether_to_override(location):
+                return False
+
+            
+
+            if os.path.isfile(location):
+                if self.the_wrapper.whether_to_override(location):
+                    return False
                 return True
         return False
 
@@ -69,10 +79,17 @@ class object_cache_for_wrapper(object):
 
     def has(self, object_key, recalculate):
         #print self, self.the_wrapper
-        #pdb.set_trace()
         if object_key in self.dump:
+            if self.the_wrapper.whether_to_override(self.dump[object_key]):
+
+                return False
+            
             return True
         else:
+
+
+
+            
             return self.pickle_dumper_wrapper.has(object_key, recalculate)
     
     # if we don't trust pickles, only trust it if it was created this round.  stuff created this round is in self.dump
@@ -102,6 +119,13 @@ class object_cache_for_wrapper(object):
             assert self.file_dumper_wrapper != None
             #pdb.set_trace()
             temp_f = self.the_wrapper.old_get_var_or_file(self.file_dumper_wrapper, params, True, False, False, always_recalculate)
+
+        try:
+            object.set_object_key(str(object_key))
+        except:
+            pass
+
+            
         return object
 
     # don't have to do anything to put the object in the cache

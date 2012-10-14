@@ -6,10 +6,15 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-//#define SERIAL
+#define SERIAL
 #define PARAM
+//#define USINGMAIN
 
 #include "lite_fixed.hpp"
+
+
+
+#include "helpers.h"
 
 
 #include <set>
@@ -33,19 +38,58 @@ typedef num num3d[1][1][1];
 typedef string string1d[1];
 typedef string string2d[1][1];
 
+
+// MPI
+extern int num_procs;
+extern int proc_id;
+// end
+
+
 struct pdb_name_struct{
   
+  pdb_name_struct(){
+    this->pdb_name = string("");
+    this->chain_letter = string("");
+  }
+
+
+  pdb_name_struct(string pdb_name, string chain_letter){
+    this->pdb_name = pdb_name;
+    this->chain_letter = chain_letter;
+  }
+
+  bool operator==(pdb_name_struct other){
+    return other.pdb_name==this->pdb_name && other.chain_letter == this->chain_letter;
+  }
+
   string pdb_name;
   string chain_letter;
 
 };
 
-struct results_struct{
-  arbi_array<int1d> scores;
+typedef arbi_array<pdb_name_struct[1]> pdb_struct_list;
+
+struct pdb_results_struct{
+
+  pdb_results_struct(arbi_array<num1d> scores, arbi_array<int1d> true_classes, arbi_array<pdb_name_struct[1]>pdb_structs, arbi_array<int1d> sample_lengths){
+    this->scores = scores;
+    this->true_classes = true_classes;
+    this->pdb_structs = pdb_structs;
+    this->sample_lengths = sample_lengths;
+  }
+
+  pdb_results_struct(){
+    this->scores = arbi_array<num1d>();
+    this->true_classes = arbi_array<int1d>();
+    this->pdb_structs = arbi_array<pdb_name_struct[1]>();
+    this->sample_lengths = arbi_array<int1d>();
+  }
+
+  arbi_array<num1d> scores;
   arbi_array<int1d> true_classes;
   arbi_array<pdb_name_struct[1]> pdb_structs;
   arbi_array<int1d> sample_lengths;
-}
+};
 
 
 
