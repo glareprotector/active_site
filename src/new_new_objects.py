@@ -31,12 +31,16 @@ import random
 import pdb
 import re
 
+
+import cross_validation_pseudo as cv
+
+
 # doesn't matter if pdb_name and chain_letter are capitalized
 class fW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-        pdb.set_trace()
+        #pdb.set_trace()
         pdb_file_name = self.get_param(params, 'pdb_name')
         pdbl = Bio.PDB.PDBList()
         pdbl.retrieve_pdb_file(pdb_file_name, pdir=self.get_holding_folder())
@@ -158,7 +162,7 @@ class iW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
             for j in range(i):
                 if math.fabs(i-j) == 1:
                     edges.append([int(i),int(j)])
-                elif res_dists[i][j] < self.get_param(params, 'dist_cut_off') and math.fabs(i-j) > 5:
+                elif res_dists[i][j] < self.get_param(params, 'co') and math.fabs(i-j) > 5:
                     edges.append([int(i),int(j)])
 
         return edges
@@ -171,8 +175,8 @@ class jW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
         #temp = self.get_var_or_file(adW, params, recalculate, False, False, False)
         
-
-        feature_list = self.get_param(params, 'node_feature_list')
+#        pdb.set_trace()
+        feature_list = self.get_param(params, 'n')
         aa_to_pos = self.get_var_or_file(aW, params, recalculate, True)
         node_features = []
         for i in range(len(aa_to_pos)):
@@ -191,7 +195,7 @@ class kW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
         #pdb.set_trace()
-        feature_list = self.get_param(params, 'edge_feature_list')
+        feature_list = self.get_param(params, 'e')
         aa_to_pos = self.get_var_or_file(aW, params, recalculate, True)
         edge_list = self.get_var_or_file(iW, params, recalculate, True)
         edge_features = []
@@ -216,11 +220,11 @@ class lW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
         print params
         #pdb.set_trace()
         the_dict = {}
-        the_dict["dist_cut_off"] = self.get_param(params, "dist_cut_off");
+        the_dict["dist_cut_off"] = self.get_param(params, "co");
         # data_list will be list of tuples of (pdb_name, chain_letter)
-        the_dict["data_list_file"] = self.get_param(params, "data_list_file")
-        the_dict['node_feature_list'] = self.get_param(params, "node_feature_list")
-        the_dict['edge_feature_list'] = self.get_param(params, "edge_feature_list")
+        the_dict["d"] = self.get_param(params, "d")
+        the_dict['n'] = self.get_param(params, "n")
+        the_dict['e'] = self.get_param(params, "e")
         the_dict['wif'] = self.get_param(params, "wif")
         the_dict['wob'] = self.get_param(params, "wob")
         the_dict['reg'] = self.get_param(params, "reg")
@@ -233,41 +237,73 @@ class lW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
         
         return the_dict
 
-class mW(wrapper.mat_obj_wrapper):
+class mW(wrapper.obj_wrapper):
 
     # params should include file name want to read - 'data_list_file'
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-        f = open(self.get_param(params, 'data_list_file'), 'r')
+        f = open(self.get_param(params, 'd'), 'r')
         ans = []
         for line in f:
-            ans.append(string.split(string.strip(line), sep='_'))
-       # pdb.set_trace()
+            line = string.split(string.strip(line), sep='_')
+            ans.append(cv.pdb_name_struct(line[0], line[1]))
+            # pdb.set_trace()
         print ans
         return ans
 
-        
+# this takes merged regular results folder and puts it in the form needed by roc input and alternative measure
+# so it has to get the results object somehow.  there will be 2 ways.  there will be 2 descendants.  1 will have results struct in params, and simply get it and return it.  another will call c++ function to get the wrapper.
+# there will be a parameter specifying which descendant to call
 class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
 
     # params will be [(scores, sizes, pdb_name, chain_letter),   ]
     # params which which it is stored does NOT include these things...only data_list, params for getting features
+    # actually, now call the interface library to get a pdb_results_struct
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-        #pdb.set_trace()
-        # in perfect world, this would have been generated model file, which then generates results.  so simulate this by getting parameters from experiment info
-        # this would have been the root of call tree
-        #pdb.set_trace()
-        experiment_info_pretending_to_be_model_params = self.get_var_or_file(lW, params, recalculate, False, True)
 
-        # node_features can get passed params, because params would have been given to this wrapper which would create model and use them to get node features
-        # after getting scores, have wrappers depending on scores that calculate roc, other measures
-        # i can't call them arbitrary order, so have to call scores, then other wrappers
-#        pdb.set_trace()
-        scores = self.get_param(params, 'scores', False)
-        true_states = self.get_param(params, 'true_states', False)
-        sizes = self.get_param(params, 'sizes', False)
-        pdb_names = self.get_param(params, 'pdb_names', False)
-        chain_letters = self.get_param(params, 'chain_letters', False)
+       
+        mode = self.get_param(params, 'md')
+
+
+
+        if mode == 0:
+            # in perfect world, this would have been generated model file, which then generates results.  so simulate this by getting parameters from experiment info
+
+
+            #experiment_info_pretending_to_be_model_params = self.get_var_or_file(lW, params, recalculate, False, True)
+            results = self.get_param(params, 'results', False)
+            
+
+            """
+            scores = self.get_param(params, 'scores', False)
+            true_states = self.get_param(params, 'true_states', False)
+            sizes = self.get_param(params, 'sizes', False)
+            pdb_names = self.get_param(params, 'pdb_names', False)
+            chain_letters = self.get_param(params, 'chain_letters', False)
+            """
+
+        elif mode == 1:
+            # trying to get outer cv results
+            the_overall_results = self.get_var_or_file(btW, params, recalculate, True, True, False)
+            results = the_overall_results.get_raw_results()
+
+        elif mode == 2:
+            # trying to get one train_test results
+
+            the_train_test_results = self.get_var_or_file(bwW, params, recalculate, True, True, False)
+            results = the_train_test_results.get_raw_results()
+
+
+
+        scores = results.scores
+        true_states = results.true_classes
+        sizes = results.sample_lengths
+        pdb_struct_names = results.pdb_structs
+        pdb_names = [x.pdb_name for x in pdb_struct_names]
+        chain_letters = [x.chain_letter for x in pdb_struct_names]
+
+        
         num_samples = len(pdb_names)
         pos = 0
         mat = []
@@ -311,13 +347,14 @@ class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-#        pdb.set_trace()
+
         results = self.get_var_or_file(nW, params, recalculate, to_pickle, False, always_recalculate)
 
         assert len(results) % 3 == 0
         num_samples = len(results) / 3
         roc_classes = []
         roc_scores = []
+        # if using regular results struct
         for i in range(num_samples):
             pdb_name = results[3 * i][0]
             chain_letter = results[ 3 * i][1]
@@ -342,7 +379,7 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.short
     # params will be those required by experiment_results, which are those required by experiment_info.
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = True, old_obj = None):
-#        pdb.set_trace()
+
         # first get instance of pW
         from wc import wc
         # figure out which roc file input wrapper to use
@@ -365,8 +402,10 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.short
 #        pdb.set_trace()
         assert os.path.isfile(source)
         assert os.path.isfile(constants.ROC_CURVE_SCRIPT)
-        iteration = self.get_param(params, 'iter', record=False)
-        obj_val = self.get_param(params, 'obj_val', record=False)
+        #iteration = self.get_param(params, 'mx', record=False)
+        #obj_val = self.get_param(params, 'obj_val', record=False)
+        iteration = '.'
+        obj_val = '.'
         subprocess.call(['Rscript', constants.ROC_CURVE_SCRIPT, source, destination, str(iteration), str(obj_val)])
         # merge current version with old version.
         if old_obj != None:
@@ -413,8 +452,8 @@ class abW(wrapper.obj_wrapper):
         which_wrapper = self.get_param(params, 'which_wrapperq')
         for i in range(len(data_list)):
             try:
-                pdb_name = data_list[i][0]
-                chain_letter = data_list[i][1]
+                pdb_name = data_list[i].pdb_name
+                chain_letter = data_list[i].chain_letter
                 print pdb_name
                 self.set_param(params, 'pdb_name', pdb_name)
                 self.get_var_or_file(which_wrapper, params, recalculate, False, False)
@@ -424,6 +463,15 @@ class abW(wrapper.obj_wrapper):
     
 # blast results file wrapper(xml format)
 class adW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
+
+
+
+    def whether_to_override(self, location):
+        
+        #if the file size is too small, we know there was something wrong
+        import os
+        if os.path.getsize(location) < 1:
+            return True
 
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
@@ -514,7 +562,7 @@ class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.s
 
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = True, old_obj = None):
-#        pdb.set_trace()
+
         results = self.get_var_or_file(nW, params, recalculate, True, True, always_recalculate)
         num_samples = len(results) / 3
         cutoffs = global_stuff.metric_cutoffs
@@ -551,8 +599,8 @@ class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.s
                             break
  #           pdb.set_trace()
         these_results = [float(these_results[i]) / float(total_num_sites) for i in range(len(cutoffs))]
-        #pdb.set_trace()
-        to_write = [self.get_param(params, 'iter', record=False), total_num_sites] + these_results
+
+        to_write = [self.get_param(params, 'mx', record=False), total_num_sites] + these_results
 #        pdb.set_trace()
         if old_obj == None:
             return [to_write]
@@ -697,8 +745,8 @@ class arW(wrapper.obj_wrapper):
         all_features = []
         all_classes = []
         for i in range(len(data_list)):
-            pdb_name = data_list[i][0]
-            chain_letter = data_list[i][1]
+            pdb_name = data_list[i].pdb_name
+            chain_letter = data_list[i].chain_letter
             this_features = self.get_var_or_file(jW, params, global_stuff.recalculate, True, True, False)
             all_features = all_features + this_features
             this_classes = self.get_var_or_file(oW, params, recalculate, True, True, False)
@@ -746,9 +794,10 @@ class azW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
         # first copy pdb file to have more manageable file name
-
+        #pdb.set_trace()
         f = self.get_var_or_file(fW, params, recalculate, False, False, False)
         temp_location = self.get_holding_folder() + self.get_param(params, 'pdb_name') + '.pdb'
+        temp_location = global_stuff.NACCESS_FOLDER + self.get_param(params, 'pdb_name') + '.pdb'
         subprocess.call(['cp', f.name, temp_location])
         # run Naccess which then puts the stuff in current working directory
         subprocess.call([global_stuff.NACCESS_PATH, temp_location])
@@ -906,8 +955,8 @@ class bkW(wrapper.mat_obj_wrapper):
         j = 0
         for line in data_list:
             print line, j
-            self.set_param(params, 'pdb_name', line[0])
-            self.set_param(params, 'chain_letter', line[1])
+            self.set_param(params, 'pdb_name', line.pdb_name)
+            self.set_param(params, 'chain_letter', line.chain_letter)
             node_features = self.get_var_or_file(jW, params, recalculate, True, True, False)
             true_classes = self.get_var_or_file(oW, params, recalculate, True, True, False)
             dist = self.get_var_or_file(aqW, params, recalculate, True, True, False)
@@ -947,6 +996,40 @@ class blW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.shor
         subprocess.call(['Rscript', constants.ROC_INFO_SCRIPT, source, destination, str(iteration), str(obj_val)])
         return open(destination)
 
+
+
+class blW2(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+#        pdb.set_trace()
+        # first get instance of pW
+        from wc import wc
+        # figure out which roc file input wrapper to use
+        which_classifier_roc_input = self.get_param(params, 'wclf')
+        # if using svm, treat 'iter' as the fold number just so i don't have to change roc curve code yet
+        #import try_svm
+        # if which_classifier_roc_input == try_svm.atW:
+        #    self.set_param(params, 'iter', self.get_param(params, 'wfld'))
+        self.set_param(params, 'which_wrapper_class', which_classifier_roc_input)
+        pW_instance = self.old_get_var_or_file(wc, params, True, False, False)
+        if always_recalculate:
+            f  = self.old_get_var_or_file(pW_instance.cache.file_dumper_wrapper, params, recalculate, False, False, 2)
+        else:
+            f  = self.old_get_var_or_file(pW_instance.cache.file_dumper_wrapper, params, recalculate, False, False, False)
+        # call R roc area calculating script, specifying input location and where to write results
+        source = f.name
+        destination = self.get_holding_location()
+        assert os.path.isfile(source)
+        #iteration = self.get_param(params, 'mx', record=False)
+        #obj_val = self.get_param(params, 'obj_val', record=False)
+        
+        subprocess.call(['Rscript', constants.PREC_POINTS_SCRIPT, source, destination, '.', '.'])
+        return open(destination)
+
+
+
+
 # returns node_features for a sample, but normalized within the sample
 class bmW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
@@ -965,97 +1048,125 @@ class bnW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
         return helper.normalize_mat(edge_features)
 
 
-# theta and data is specified in params
-# return results_struct based on that theta and data
-class boW(wrapper.obj_wrapper, wrapper.experiment_results_wrapper):
+
+# returns a data.  data_list_file should be specified
+class brW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        import crf_lib
-        data = self.get_param(params, 'data');
-        self.set_param(params, 'testl', data.get_testing_names())
-        results = crf_lib.get_results_given_testing_data_and_theta(self, params, recalculate)
-        return results
-
-# hyper parameters and data is specified in params
-# returns theta found using those hyperparameters and data
-class bpW(wrapper.vect_obj_wrapper, wrapper.experiment_results_wrapper):
-
-    @dec
-    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        import crf_lib
-        data = self.get_param(params, 'data')
-        self.set_param(params, 'trnl', data.get_training_names())
-        theta crf_lib.get_theta_given_training_data_and_hypers(self, params, recalculate)
-        return theta
-
-
-# returns pdb_results_struct that comes from CV on a dataset.  H is fixed.
-class bqW(wrapper.obj_wrapper):
-
-    @dec
-    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        
-        data = self.get_param(params, 'data')
-        cv_results = cv_results_struct(data)
-        for fold in data.get_folds(self, params, recalculate):
-            self.set_param(params, 'trnl', fold.get_training_names())
-            theta = self.get_var_or_file(bpW, params, recalculate, True, True)
-            self.set_param(params, 'theta', theta)
-            self.set_param(params, 'testl', fold.get_testing_names())
-            results = self.get_var_or_file(boW, params, recalculate, True, True)
-            cv_results.add(fold, theta, self.get_param(params, 'H'), results)
-        return cv_results
-
+        data_list_file = self.get_param(params, 'd')
+        return cv.data(self, params, recalculate, data_list_file)
 
 # returns a fold.  source instance and num folds and which fold should be specified in params
-class brW(wrapper.obj_wrapper):
+class buW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        return fold(maker, params, recalculate)
+        source = self.get_param(params, 'fsc')
+        num_folds = self.get_param(params, 'fldk')
+        which_fold = self.get_param(params, 'wfldk')
+        return cv.fold(self, params, recalculate, source, which_fold, num_folds)
+
+
+# returns sorted distances(previous thing returned a tuple of distances and positions)
+class bxW(wrapper.obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        trun_sorted_dist, trun_sorted_pos = self.get_var_or_file(apW, params, recalculate, True, False, False)
+        return trun_sorted_dist
+
+
+# returns positions corresponding to closest positions
+class byW(wrapper.obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        trun_sorted_dist, trun_sorted_pos = self.get_var_or_file(apW, params, recalculate, True, False, False)
+        return trun_sorted_pos
+
+
+# for a specified fold, returns the result of training on fold's training, testing on fold's testing.  actually, returns (fold, results, object_key) list
+# hyperparams should also be passed as separate parameter
+class bwW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper, wrapper.experiment_results_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+
+        return cv.train_test_result(self, params, recalculate)
 
 
 
-# for a given dataset on which to do CV, searches for the best H.  data is specified in params
-class bsW(wrapper.obj_wrapper):
+
+# returns the results of outermost cv
+class btW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper, wrapper.experiment_results_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+
+        return cv.overall_results(self, params, recalculate)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class test(wrapper.obj_wrapper):
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        a_data = self.get_var_or_file(brW, params, True, False, False)
+
+        folds = a_data.get_folds(self, params, recalculate, 4)
+        return folds, folds[0].get_folds(self, params, recalculate, 4)
+
+
+
+class caW(wrapper.obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        hp_values = self.get_param(params, 'hpv')
+        total_jobs = self.get_param(params, 'tj')
+        which_job = self.get_param(params, 'wj')
+
+        param_combos = cv.cross_product(hp_values.sorted_listify())
+        sorted_keys = hp_values.get_sorted_keys()
+        hp_stash = []
+        for i in range(len(param_combos)):
+            if i % total_jobs == which_job:
+                combo = param_combos[i]
+                temp = {}
+                for i in range(len(sorted_keys)):
+                    temp[sorted_keys[i]] = combo[i]
+                hp_stash.append(param.param(temp))
+        return hp_stash
+        
+
+# hp_values, total_jobs, which_job should be specified in params, as well as which fold
+class cbW(wrapper.obj_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
         
-        searcher = H_searcher()
-        H_search_results = H_results()
-        while not H_searcher.done():
-            next_H = H_searcher.get_next_H()
-            self.set_param(params, 'H', next_H)
-            cv_results = self.get_var_or_file(bqW, params, recalculate, True)
-            H_search_results.add(next_H, cv_results)
-        return H_search_results.best_H()
-
-# does the outer cross validation
-class btW(wrapper.obj_wrapper):
-
-    @dec
-    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        inner_k = self.get_param(params, 'innerk')
-        outer_k = self.get_param(params, 'outerk')
-        data = self.get_var_or_file(params, buW, recalculate)
-        self.set_param(params, 'fldk', outer_k):
-        self.set_param(params, 'fsrc', data)
+        a_hp_searcher = cv.hp_searcher(self, params, recalculate)
+        self.set_param(params, 'hps', a_hp_searcher)
+        return cv.hp_search_results(self, params, recalculate)
         
-        cv_results = cv_results_struct(data)
-
-        for fold in data.get_folds(self, params, recalculate):
-            self.set_param(params, 'fldk', inner_k)
-            self.set_param(params, 'fsrc', fold)
-            H = self.get_var_or_file(params, bsW, recalculate, True)
-            
-
 
 
 def print_stuff(x):
     #pdb.set_trace()
     print 'printing!!!!!!!!'
     print x
+
+
 
 
