@@ -26,4 +26,7 @@ the_dict = {'hp':param.param(), 'd':'cw.pl', 'e':[features.xW, features.akW], 'n
 the_params = param.param(the_dict)
 
 
-the_params.set_param('hpv',param.param({'reg':[0,10,50,100,400,900]}))
+#the_params.set_param('hpv',param.param({'reg':[10], 'posw':[200], 'nwc':[-10.0], 'sfc':[10.0]}))
+
+the_params.set_param('hpv',param.param({'reg':[0,10,50,100,400,900], 'posw':[1,50,200,1000], 'nwc':[-1.0, -10.0, -50.0], 'sfc':[1.0,10.0, 100.0]}))
+#the_params.set_param('hpv',param.param({'reg':[0,10,50,100,400,900]}))
