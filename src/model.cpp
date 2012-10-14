@@ -1,37 +1,52 @@
 #include "model.h"
 #include "LBFGS.h"
 #include <vector>
-#include "helpers.h"
+//#include "helpers.h"
 #include <time.h>
 #include <cmath>
+
+
+
 
 
 #ifndef SERIAL 
 #include "mpi.h" 
 #endif
 
-sample model::read_sample(){
 
-  // keep for now only bc sample for now takes these in as input
-  string pdb_name = cpp_caller::CPPString_From_PyString(cpp_caller::get_param(globals::pParams, string("pdb_name")));
-  string chain_letter = cpp_caller::CPPString_From_PyString(cpp_caller::get_param(globals::pParams, string("chain_letter")));
-
-  cout<<"proc_id "<<proc_id<<" is loading "<<pdb_name<<" "<<chain_letter<<endl;
-  
-  PyObject* pNodeFeatures = cached_obj_getter::call_wrapper(string("new_new_objects"), string("jW"), globals::pParams, globals::recalculate, true, true);
-  
-  arbi_array<num2d> node_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("bmW"), globals::pParams, globals::recalculate, true, true), true);
-  arbi_array<num2d> edge_features = cpp_caller::py_float_mat_to_cpp_num_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("bnW"), globals::pParams, globals::recalculate, true, true), true);  
-  arbi_array<int1d> true_states = cpp_caller::py_int_list_to_cpp_int_vect(cached_obj_getter::call_wrapper(string("new_new_objects"), string("oW"), globals::pParams, globals::recalculate, true, true), true);
-  arbi_array<int2d> edge_list = cpp_caller::py_int_mat_to_cpp_int_mat(cached_obj_getter::call_wrapper(string("new_new_objects"), string("iW"), globals::pParams, globals::recalculate, true, true), true);
-
-  this->num_node_features = node_features.size().i1;
-  this->num_edge_features = edge_features.size().i1;
-
-  return sample(this, node_features, edge_features, edge_list, true_states, pdb_name, chain_letter);
+void model::register_pys(PyObject* pMaker, PyObject* pParams, bool recalculate){
+  pMaker_cur = pMaker;
+  pParams_cur = pParams;
+  recalculate_cur = recalculate;
 }
 
+void model::unregister_pys(){
+  pMaker_cur = NULL;
+  pParams_cur = NULL;
+  recalculate_cur = -1;
+}
+
+PyObject* model::get_pMaker(){
+  assert(pMaker_cur != NULL);
+  return pMaker_cur;
+}
+
+PyObject* model::get_pParams(){
+  //cout<<"                        "<<pParams_cur<<" ";
+  assert(pParams_cur != NULL);
+  return pParams_cur;
+}
+
+bool model::get_recalculate(){
+  assert(recalculate_cur != -1);
+  return recalculate_cur;
+}
+
+
+
 void model::normalize(){
+
+  int num_samples = this->do_i_care_idx.size().i0;
 
   for(int i = 0; i < num_node_features; i++){
 
@@ -107,10 +122,19 @@ void model::normalize(){
   }
 }
 
+
+// to get measures: those measures will call wrapper for results_struct.  what does report do...ignore for now
+
+
 // writes to specified folder the scores for each score as well as their true class
-void model::report(arbi_array<num1d> theta, int iteration, num obj){
+// params should contain theta.  no hyper_parameters
+pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams, bool recalculate, arbi_array<num1d> theta, int which_infer){
+  
+  register_pys(pMaker, pParams, recalculate);
 
 
+
+  
 
   #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
@@ -130,8 +154,12 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
 
   // first get total length of stuff to report
   int num_data = 0;
-  cout<<num_testing<<" : "<<testing_indicies<<endl;
-  for(int i = 0; i < num_testing; i++){
+  
+
+  cout<<"TESTING SIZE: "<<testing_indicies.size().i0<<endl;
+
+  for(int i = 0; i < testing_indicies.size().i0; i++){
+    
     num_data += data(testing_indicies(i)).num_nodes;
   }
   
@@ -183,6 +211,7 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
 
   #else
 
+  int num_testing = this->testing_indicies.size().i0;
   // true_classes.resize(num_data);
   // scores = arbi_array<num1d>(num_data);
   true_classes = new int[num_data];
@@ -207,7 +236,7 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
   for(int i = 0; i < num_testing; i++){
     arbi_array<num2d> node_marginals;
     arbi_array<num3d> edge_marginals;
-    data(testing_indicies(i)).get_marginals(theta, node_marginals, edge_marginals);
+    data(testing_indicies(i)).get_marginals(get_pMaker(), get_pParams(), get_recalculate(), theta, node_marginals, edge_marginals, which_infer);
     for(int j = 0; j < data(testing_indicies(i)).num_nodes; j++){
       true_classes[idx] = data(testing_indicies(i)).true_states(j);
       scores[idx] = node_marginals(j,1);
@@ -305,8 +334,42 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
       scores_ar(i) = scores[i];
     }
 
+    arbi_array<pdb_name_struct[1]> pdbs(num_testing_master);
+    for(int i = 0; i < num_testing_master; i++){
+      pdbs(i) = pdb_name_struct(parsed_pdb_names(i), parsed_chain_letters(i));
+    }
 
-    
+
+    // each pdb represented by a length 2 list ERROR
+    return pdb_results_struct(scores_ar, true_classes_ar, pdbs, sample_lengths_ar);
+  }
+
+}
+
+
+void model::report(PyObject* pMaker, PyObject* pParams, bool recalculate, arbi_array<num1d> theta, int iteration, num obj, int which_infer){
+  register_pys(pMaker, pParams, recalculate);
+  report(theta, iteration, obj, which_infer);
+  unregister_pys();
+}
+
+void model::report(arbi_array<num1d> theta, int iteration, num obj, int which_infer){
+
+  pdb_results_struct results = get_results_struct(get_pMaker(), get_pParams(), get_recalculate(), theta, which_infer);
+  
+  // then set a param to results and call various wrappers.
+
+
+}
+
+
+/*
+
+void emit_results(results_struct results){ 
+
+  if(proc_id == 0){
+
+    // ERROR: pass pdbs, instead of one parameter for pdb_name and one parameter for chain_letter
 
     cpp_caller::set_param(globals::pParams, string("scores"), &scores_ar, globals::NUM_VECT);
     cpp_caller::set_param(globals::pParams, string("true_states"), &true_classes_ar, globals::INT_VECT);
@@ -331,32 +394,119 @@ void model::report(arbi_array<num1d> theta, int iteration, num obj){
 
 }
 
-void model::assign(int num_folds, int which_fold){
+
+*/
+
+
+arbi_array<pdb_name_struct[1]> model::get_master_pdb_list(arbi_array<pdb_name_struct[1]> training_pdb_list, arbi_array<pdb_name_struct[1]> testing_pdb_list){
+  
+  int len = training_pdb_list.size().i0 + testing_pdb_list.size().i0;
+  arbi_array<pdb_name_struct[1]> master_pdb_list(len);
+  for(int i = 0; i < training_pdb_list.size().i0; i++){
+    cout<<i<<" "<<endl;
+    master_pdb_list[i] = training_pdb_list[i];
+  }
+  for(int i = training_pdb_list.size().i0; i < len; i++){
+    master_pdb_list[i] = testing_pdb_list[i];
+  }
+  
+  return master_pdb_list;
+}
+
+// assume pdb_list_file is specified in params.  so function only takes in pMaker and pParams as input, so maybe it's not clear what fxn does but oh well
+arbi_array<pdb_name_struct[1]> model::get_master_pdb_list(PyObject* pMaker, PyObject* pParams){
+  // assume there is wrapper in python that provides this (which there is)
+  return cpp_param::get_param_pdb_name_struct1d(pMaker, pParams, string("pdb_list_file"));
+}
+
+
+void model::get_training_and_testing_indicies(arbi_array< pdb_name_struct[1]> master_pdb_list, arbi_array<pdb_name_struct[1]> training_pdb_list, arbi_array<pdb_name_struct[1]> testing_pdb_list, arbi_array<int1d>& all_training_indicies, arbi_array<int1d>& all_testing_indicies){
+
+  int training_len = training_pdb_list.size().i0;
+  int testing_len = testing_pdb_list.size().i0;
+  all_training_indicies.resize(training_len);
+  all_testing_indicies.resize(testing_len);
+
+  for(int i = 0; i < training_len; i++){
+    int idx = -1;
+    for(int j = 0; j < master_pdb_list.size().i0; j++){
+      if(training_pdb_list[i] == master_pdb_list[j]){
+	all_training_indicies[i] = j;
+	break;
+      }
+    }
+  }
+
+  for(int i = 0; i < testing_len; i++){
+    int idx = -1;
+    for(int j = 0; j < master_pdb_list.size().i0; j++){
+      if(testing_pdb_list[i] == master_pdb_list[j]){
+	all_testing_indicies[i] = j;
+	break;
+      }
+    }
+  }
   
 
+}
 
+
+void model::get_training_and_testing_indicies(arbi_array< pdb_name_struct[1] > master_pdb_list, int which_fold, int num_folds, arbi_array<int1d>& training_indicies, arbi_array<int1d>& testing_indicies){
+  
   training_indicies = arbi_array<int1d>();
   testing_indicies = arbi_array<int1d>();
 
-  for(int i = 0; i < num_samples; i++){
-    if((i % num_folds) == which_fold){
-      //training_indicies.append(i);
-      helpers::append(training_indicies,i);
+  for(int i = 0 ; i < master_pdb_list.size().i0; i++){
+    if(i % num_folds == which_fold){
+      helpers::append(training_indicies, i);
     }
     else{
-      //testing_indicies.append(i);
-      helpers::append(testing_indicies,i);
+      helpers::append(testing_indicies, i);
     }
   }
-  cout<<"testing: "<<testing_indicies<<endl;
-  cout<<"training: "<<training_indicies<<endl;
-
-  num_training = training_indicies.size().i0;
-  num_testing = testing_indicies.size().i0;
 }
 
-// future usage: data_list is stored as param.  one by one, set pdb_name, call sample constructor with those params, which will be global
 
+void model::get_own_training_and_testing_indicies(arbi_array<int1d> idx_i_care, arbi_array<int1d> training_indicies, arbi_array<int1d> testing_indicies, arbi_array<int1d>& own_training_indicies, arbi_array<int1d>& own_testing_indicies){
+  
+  own_training_indicies = arbi_array<int1d>();
+  own_testing_indicies = arbi_array<int1d>();
+  
+  
+  for(int i = 0; i < training_indicies.size().i0; i++){
+    for(int j = 0; j < idx_i_care.size().i0; j++){
+      if(training_indicies[i] == idx_i_care[j]){
+	helpers::append(own_training_indicies, j);
+	break;
+      }
+    }
+  }
+
+  
+  for(int i = 0; i < testing_indicies.size().i0; i++){
+    for(int j = 0; j < idx_i_care.size().i0; j++){
+      if(testing_indicies[i] == idx_i_care[j]){
+	helpers::append(own_testing_indicies, j);
+	break;
+      }
+    }
+  }
+
+
+}
+
+
+void model::get_num_node_and_edge_features(int& num_node_features, int& num_edge_features){
+
+  num_node_features = this->data[0].node_features.size().i1;
+  num_edge_features = this->data[0].edge_features.size().i1;
+
+}
+
+
+
+// future usage: data_list is stored as param.  one by one, set pdb_name, call sample constructor with those params, which will be global
+/*
 void model::load_data(){
 
   int num_samples;
@@ -507,102 +657,189 @@ void model::load_data(){
   #endif
   this->num_samples = data.size().i0;
 
+  }*/
+
+// data will be specified as either a raw data_file location, or explicit training/testing data in the form of lists of (pdb_name, chain_letter)
+// a parameter "mode" will specify which one of these we are using
+model::model(PyObject* pMaker, PyObject* pParams, bool recalculate, arbi_array< pdb_name_struct[1]> training_pdb_list, arbi_array< pdb_name_struct[1]> testing_pdb_list, int num_states){
+  //cout<<"a"<<endl;
+  register_pys(pMaker, pParams, recalculate);
+  //cout<<"b"<<endl;
+  this->master_pdb_list = get_master_pdb_list(training_pdb_list, testing_pdb_list);
+  //cout<<"c"<<endl;
+  get_training_and_testing_indicies(this->master_pdb_list, training_pdb_list, testing_pdb_list, this->all_training_indicies, this->all_testing_indicies);
+  //cout<<"d"<<endl;
+  
+  this->do_i_care_idx = get_do_i_care_idx(this->master_pdb_list);
+  //cout<<"e"<<endl;
+  get_own_training_and_testing_indicies(this->do_i_care_idx, this->all_training_indicies, this->all_testing_indicies, this->training_indicies, this->testing_indicies);
+  //cout<<"f"<<endl;
+
+  load_data(this->master_pdb_list, this->do_i_care_idx);
+  //cout<<"g"<<endl;
+  get_num_node_and_edge_features(this->num_node_features, this->num_edge_features);
+  this->num_states = cpp_param::get_param_int(get_pMaker(), get_pParams(), string("ns"));
+  this->theta_length = get_maps(this->num_states, this->num_node_features, this->num_edge_features, this->node_map, this->edge_map);
+  
+  unregister_pys();
+  
+  
 }
 
 
+arbi_array<int1d> model::get_do_i_care_idx(arbi_array<pdb_name_struct[1]> master_pdb_list){
+  int num_data = master_pdb_list.size().i0;
+  arbi_array<int1d> do_i_care_idx;
+  for(int i = 0; i < num_data; i++){
+    //if(i % num_procs == proc_id){
+      helpers::append(do_i_care_idx, i);
+      //}
+  }
+  return do_i_care_idx;
+}
+
+model::model(PyObject* pMaker, PyObject* pParams, bool recalculate, int which_fold, int num_folds, int num_states){
+  //cout<<"z"<<endl;
+  register_pys(pMaker, pParams, recalculate);
+  //cout<<"a"<<endl;
+  this->master_pdb_list = cpp_param::get_var_or_file_pdb_name_struct1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("mW"), get_recalculate());
+  //cout<<"b"<<endl;
+  get_training_and_testing_indicies(master_pdb_list, which_fold, num_folds, this->all_training_indicies, this->all_testing_indicies);
+  //cout<<"c"<<endl;
+  this->do_i_care_idx = get_do_i_care_idx(this->master_pdb_list);
+  //cout<<"d"<<endl;
+  get_own_training_and_testing_indicies(this->do_i_care_idx, this->all_training_indicies, this->all_testing_indicies, this->training_indicies, this->testing_indicies);
+  //cout<<"e"<<endl;
+  load_data(this->master_pdb_list, this->do_i_care_idx);
+  get_num_node_and_edge_features(this->num_node_features, this->num_edge_features);
+  this->num_states = num_states;
+  this->theta_length = get_maps(this->num_states, this->num_node_features, this->num_edge_features, this->node_map, this->edge_map);
+
+  unregister_pys();
   
-// params should have pdb list.  retrieve the list, set individual
-model::model(){
+}
 
-  this->which_reg = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wreg")));
-  this->num_states = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("ns")));
-  this->num_folds = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("nfld")));
-  this->which_fold = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wfld")));
-  this->reg_constant = PyFloat_AsDouble(cpp_caller::get_param(globals::pParams, string("reg")));
-  this->mean_field_max_iter = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("mfmi")));
-  this->which_infer = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wif")));
-  this->which_fold = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wfld")));
-  this->num_folds = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("nfld")));
-  this->which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
-  this->which_obj2 = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob2")));
-  load_data();
-  //assign(this->num_folds, this->which_fold);
+void model::load_data(arbi_array< pdb_name_struct[1]> master_pdb_list, arbi_array< int1d > do_i_care_idx){
+  
+  this->data = arbi_array<sample[1]>();
+  cout<<"loading: "<<endl;
+  for(int i = 0; i < do_i_care_idx.size().i0; i++){
+    cout<<i<<" "<<flush;
+    //cout<<do_i_care_idx[i]<<endl;
+    cout<<master_pdb_list[do_i_care_idx[i]].pdb_name<<endl;
+    //cout<<"uhoh"<<endl;
+    helpers::append(this->data, read_sample(master_pdb_list[do_i_care_idx[i]]));
+  }
 
 
-  // set the node and edge map.  remember that edge map should be symmetric
+}
+
+sample model::read_sample(pdb_name_struct pdb){
+  
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), pdb.pdb_name);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), pdb.chain_letter);
+
+  arbi_array<num2d> node_features = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("jW"), get_recalculate());
+
+  arbi_array<num2d> edge_features = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("kW"), get_recalculate());
+
+  arbi_array<int1d> true_states =  cpp_param::get_var_or_file_int1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("oW"), get_recalculate());
+
+  arbi_array<int2d> edge_list =  cpp_param::get_var_or_file_int2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("iW"), get_recalculate());
+  return sample(get_pMaker(), get_pParams(), get_recalculate(), this, node_features, edge_features, edge_list, true_states, pdb.pdb_name, pdb.chain_letter);
+}
+
+
+int model::get_maps(int num_states, int num_node_features, int num_edge_features, arbi_array<int2d>& node_map, arbi_array<int3d>& edge_map){
   int idx = 0;
  
-  this->node_map = arbi_array<int2d>(this->num_states, this->num_node_features);
+  node_map = arbi_array<int2d>(num_states, num_node_features);
   for(int i = 0; i < this->num_states; i++){
     for(int j = 0; j < this->num_node_features; j++){
       this->node_map(i,j) = idx;
       idx++;
     }
   }
-  this->edge_map = arbi_array<int3d>(this->num_states, this->num_states, this->num_edge_features);
-  for(int i = 0; i < this->num_states; i++){
+  edge_map = arbi_array<int3d>(num_states, num_states, num_edge_features);
+  for(int i = 0; i < num_states; i++){
     for(int j = 0; j <= i; j++){
-      for(int k = 0; k < this->num_edge_features; k++){
+      for(int k = 0; k < num_edge_features; k++){
 	this->edge_map(i,j,k) = idx;
 	this->edge_map(j,i,k) = idx;
 	idx++;
       }
     }
   }
-  
-  this->theta_length = idx;
-
-  cout<<node_map<<endl;
-  //exit(1);
-
-  
-  normalize();
-
-  this->prev_obj = -1;
-  
+  return idx;
 }
-
-arbi_array<num1d> model::get_dL_dTheta(int which_obj, arbi_array<num1d> theta){
-
+  
+  
+arbi_array<num1d> model::get_dL_dTheta(PyObject* pMaker, PyObject* pParams, bool recalculate, int which_obj, arbi_array<num1d> theta){
+  register_pys(pMaker, pParams, recalculate);
   arbi_array<num1d> ans(theta_length);
   //ans.fill(0);
   ans = 0;
-  for(int i = 0; i < num_training; i++){
-      ans = ans + data(training_indicies(i)).get_dL_dTheta(which_obj, theta);
+  cout<<"gradient: "<<flush;
+  for(int i = 0; i < this->training_indicies.size().i0; i++){
+    //cout<<training_indicies(i)<<" "<<flush;
+    ans = ans + data(training_indicies(i)).get_dL_dTheta(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
   }
-
+  //cout<<endl;
+  unregister_pys();
   return ans;
 }
 
-num model::get_reg(arbi_array<num1d> theta){
+num model::get_reg(PyObject* pMaker, PyObject* pParams, bool recalculate, arbi_array<num1d> theta, int which_reg){
   
-  if(this->which_reg == 0){
+  register_pys(pMaker, pParams, recalculate);
+
+  num reg_constant = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("reg"));
+
+
+  if(which_reg == 0){
     num reg = 0;
     for(int i = 0; i < theta.size().i0; i++){
       reg += theta(i) * theta(i);
     }
+    unregister_pys();
     return reg * reg_constant / 2.0;
   }
-  else if(this->which_reg == 1){
+  else if(which_reg == 1){
     num reg = 0;
     for(int i = 0; i < theta.size().i0; i++){
       reg += abs(theta(i));
     }
+    unregister_pys();
     return reg * reg_constant;
   }
+  else{
+    assert(false);
+  }
+
+
 }
 
-arbi_array<num1d> model::get_dReg_dTheta(arbi_array<num1d> theta){
+arbi_array<num1d> model::get_dReg_dTheta(PyObject* pMaker, PyObject* pParams, bool recalculate, arbi_array<num1d> theta, int which_reg){
+  register_pys(pMaker, pParams, recalculate);
+  arbi_array<num1d> ans = get_dReg_dTheta(theta, which_reg);
+  unregister_pys();
+  return ans;
+}
+
+
+arbi_array<num1d> model::get_dReg_dTheta(arbi_array<num1d> theta, int which_reg){
+
+  num reg_constant = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("reg"));
 
   arbi_array<num1d> reg_grad(theta.size().i0);
   // have to add in term due to regularization
-  if(this->which_reg == 0){
+  if(which_reg == 0){
     for(int i = 0; i < theta.size().i0; i++){
       reg_grad(i) = theta(i) * reg_constant;
     }
     return reg_grad;
   }
-  else if(this->which_reg == 1){
+  else if(which_reg == 1){
     for(int i = 0; i < theta.size().i0; i++){
       if(theta(i) > 0){
 	reg_grad(i) = 1;
@@ -611,7 +848,7 @@ arbi_array<num1d> model::get_dReg_dTheta(arbi_array<num1d> theta){
 	reg_grad(i) = -1.0;
       }
     }
-    reg_grad *= this->reg_constant;
+    reg_grad *= reg_constant;
     return reg_grad;
   }
   else{
@@ -621,17 +858,24 @@ arbi_array<num1d> model::get_dReg_dTheta(arbi_array<num1d> theta){
   
   
 
-num model::get_L(int which_obj, arbi_array<num1d> theta){
+num model::get_L(PyObject* pMaker, PyObject* pParams, bool recalculate, int which_obj, arbi_array<num1d> theta){
+
+  register_pys(pMaker, pParams, recalculate);
 
   if(proc_id == 0){
-    cout<<"which_obj: "<<which_obj<<endl;
+    //cout<<"which_obj: "<<which_obj<<endl;
   }
 
   num ans = 0, temp;
-  for(int i = 0; i < num_training; i++){
-    temp = data(training_indicies(i)).get_L(which_obj, theta);
+  //cout<<"function: "<<endl;
+  for(int i = 0; i < training_indicies.size().i0; i++){
+    //cout<<" iiiiiiiiiiiiiiiiiii "<<training_indicies(i)<<" "<<data(training_indicies(i)).pdb_name<<" "<<i<<endl;
+    //cout<<training_indicies(i)<<" "<<flush;
+    temp = data(training_indicies(i)).get_L(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
     ans += temp;
   }
+  //cout<<endl;
+  unregister_pys();
 
   return ans;
 }
@@ -645,10 +889,10 @@ class My_Minimizer: public Minimizer{
 
   My_Minimizer(model* _p_model): Minimizer(false) {p_model = _p_model;}
 
-  virtual void ComputeGradient(vector<double>& gradient, const vector<double>& x){
+  virtual void ComputeGradient(vector<double>& gradient, const vector<double>& x, int which_obj, int which_reg){
     
     //int which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
-    int which_obj = p_model->which_obj;
+    //int which_obj = p_model->which_obj;
 
     #ifdef SERIAL
 
@@ -656,7 +900,7 @@ class My_Minimizer: public Minimizer{
     for(int i = 0; i < x.size(); i++){
       theta(i) = x[i];
     }
-    arbi_array<num1d> ans = p_model->get_dL_dTheta(which_obj, theta);
+    arbi_array<num1d> ans = p_model->get_dL_dTheta(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
     
     for(int i = 0; i < gradient.size(); i++){
       gradient[i] = ans(i);
@@ -668,7 +912,7 @@ class My_Minimizer: public Minimizer{
       theta(i) = x[i];
     }
 
-    arbi_array<num1d> ans = p_model->get_dL_dTheta(which_obj, theta);
+    arbi_array<num1d> ans = p_model->get_dL_dTheta(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
     num* ans_array = new num[p_model->theta_length];
     num* ans_sum_array = new num[p_model->theta_length];
     for(int i = 0; i < p_model->theta_length; i++){
@@ -696,21 +940,21 @@ class My_Minimizer: public Minimizer{
     
     #endif
 
-    arbi_array<num1d> reg_grad = p_model->get_dReg_dTheta(theta);
+    arbi_array<num1d> reg_grad = p_model->get_dReg_dTheta(get_pMaker(), get_pParams(), get_recalculate(), theta, which_reg);
 
 
     for(int i = 0; i < gradient.size(); i++){
       gradient[i] = gradient[i] + reg_grad(i);
     }
 
-    if(proc_id==0)cout<<"GRADIENT: "<<endl;
+    //if(proc_id==0)cout<<"GRADIENT: "<<endl;
     for(int i = 0 ; i < gradient.size(); i++){
-      if(proc_id==0)cout<<gradient[i]<<" ";
+      //if(proc_id==0)cout<<gradient[i]<<" ";
     }
     if(proc_id==0)cout<<endl;
   }
 
-  virtual double ComputeFunction(const vector<double>& x){
+  virtual double ComputeFunction(const vector<double>& x, int which_obj, int which_reg){
 
     
 
@@ -724,9 +968,9 @@ class My_Minimizer: public Minimizer{
     }
 
     //int which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
-    int which_obj = p_model->which_obj;
+    //int which_obj = p_model->which_obj;
 
-    double ans = p_model->get_L(which_obj, theta);
+    double ans = p_model->get_L(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
     assert(isfinite(ans));
 
     #ifndef SERIAL
@@ -745,7 +989,7 @@ class My_Minimizer: public Minimizer{
 
 
     // add in reg constant
-    num reg_penalty = p_model->get_reg(theta);
+    num reg_penalty = p_model->get_reg(get_pMaker(), get_pParams(), get_recalculate(), theta, which_reg);
 
     #ifndef SERIAL
     MPI_Barrier(MPI_COMM_WORLD);
@@ -755,9 +999,9 @@ class My_Minimizer: public Minimizer{
 
   }
 
-  virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length){
+  virtual void Report (const vector<double> &theta, int iteration, double objective, double step_length, int which_infer){
     int s;
-
+    /*
     if(p_model->prev_obj == -1){
       p_model->prev_obj = objective;
     }
@@ -773,13 +1017,13 @@ class My_Minimizer: public Minimizer{
     if(iteration > 25000){
       p_model->which_obj = p_model->which_obj2;
     }
-
-    if(iteration%5 == 1){
+    */
+    if(iteration%5000 == 4999){
       arbi_array<num1d> theta_aa;  theta_aa.resize(theta.size());
       for(int i = 0; i < theta.size(); i++){
 	theta_aa(i) = theta[i];
       }
-      p_model->report(theta_aa, iteration, objective);
+      p_model->report(get_pMaker(), get_pParams(), get_recalculate(), theta_aa, iteration, objective, which_infer);
       
     }
   }
@@ -844,6 +1088,28 @@ void set_input_params(PyObject* pParams, int argc, char* argv[]){
 
 
 int main(int argc, char* argv[]){
+
+
+
+  Py_Initialize();
+  
+  PyObject* pSysPath= cpp_caller::_get_module_PyObject(string("sys"), string("path"));
+  for(int i = 0; i < PyList_Size(pSysPath); i++){
+    cpp_caller::added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
+  }
+  // set proc_id
+#ifndef SERIAL
+  MPI_Comm_rank(comm, &proc_id);
+  MPI_Comm_size(comm, &num_procs);
+#else
+  proc_id = 0;
+  num_procs = 1;
+#endif
+
+  cpp_caller::get_module_PyObject(string("run_test"), string("results"));
+
+  #ifdef USINGMAIN
+
 
   globals::init(argc, argv);
   Py_Initialize();
@@ -958,6 +1224,9 @@ int main(int argc, char* argv[]){
 
   #endif
 
+
+
+
   model m;
   
 
@@ -1003,7 +1272,7 @@ int main(int argc, char* argv[]){
 
   arbi_array<num2d> node_marginals;
   arbi_array<num3d> edge_marginals;
-  m.data(0).get_marginals(w0_aa, node_marginals, edge_marginals);
+  //m.data(0).get_marginals(w0_aa, node_marginals, edge_marginals);
   cout<<node_marginals<<endl;
   cout<<edge_marginals(0,0,0)<<" "<<edge_marginals(0,1,0)<<" "<<edge_marginals(0,0,1)<<" "<<edge_marginals(0,1,1);
   cout<<w0_aa<<endl;
@@ -1018,7 +1287,7 @@ int main(int argc, char* argv[]){
 
   
   
-  num val = minner->ComputeFunction(w0);  
+  //num val = minner->ComputeFunction(w0);  
 
   //exit(1);
 
@@ -1046,7 +1315,11 @@ int main(int argc, char* argv[]){
   
   //minner->LBFGS(w0,20000);
 
-  minner->LBFGS(w0,5000);
+  //minner->LBFGS(w0,5000);
+
+
+#endif
+
 
   #ifndef SERIAL
   MPI_Finalize();

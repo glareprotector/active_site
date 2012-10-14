@@ -45,6 +45,10 @@ def super_shorten(x):
     x = re.sub(r'>','',x)
     x = re.sub(r'f\.','',x)
     x = re.sub(r'\),\(',')(',x)
+    #x = re.sub(r'\)\(','|',x)
+    #x = re.sub(r'\[\(','[',x)
+    #x = re.sub(r'\)\]',']',x)
+
     return x
 
 

@@ -163,6 +163,7 @@ class bbW(obj_wrapper):
         pos_to_aa = self.get_var_or_file(objects.eW, params, recalculate, True, False)
         res_one = chain_seq_in_one[pos_to_aa[pos]]
         assert(Polypeptide.three_to_one(res_three) == res_one)
+#        pdb.set_trace()
         return [vals[1], vals[3], vals[5], vals[7], vals[9]]
 
 

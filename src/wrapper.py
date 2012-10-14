@@ -20,8 +20,12 @@ from wrapper_decorator import *
 
 class wrapper(object):
 
-    def super_shorten(self):
+
+    def whether_to_override(self, x):
         return False
+
+    def super_shorten(self):
+        return True
 
     def specificity(self):
         return None
@@ -269,7 +273,8 @@ class generic_dumper_wrapper(file_wrapper):
         if always_recalculate:
             if always_recalculate != 2:
                 always_recalculate = False
-        obj = self.old_get_var_or_file(self.source_wrapper, params, True, to_pickle, to_filelize, always_recalculate)
+        #ERROR?
+        obj = self.old_get_var_or_file(self.source_wrapper, params, recalculate, to_pickle, to_filelize, always_recalculate)
         self.dump_object(obj)
 
         return open(self.get_holding_location(), 'rb')

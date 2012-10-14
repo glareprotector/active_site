@@ -964,6 +964,95 @@ class bnW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
         edge_features = self.get_var_or_file(kW, params, recalculate, True, True, False)
         return helper.normalize_mat(edge_features)
 
+
+# theta and data is specified in params
+# return results_struct based on that theta and data
+class boW(wrapper.obj_wrapper, wrapper.experiment_results_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        import crf_lib
+        data = self.get_param(params, 'data');
+        self.set_param(params, 'testl', data.get_testing_names())
+        results = crf_lib.get_results_given_testing_data_and_theta(self, params, recalculate)
+        return results
+
+# hyper parameters and data is specified in params
+# returns theta found using those hyperparameters and data
+class bpW(wrapper.vect_obj_wrapper, wrapper.experiment_results_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        import crf_lib
+        data = self.get_param(params, 'data')
+        self.set_param(params, 'trnl', data.get_training_names())
+        theta crf_lib.get_theta_given_training_data_and_hypers(self, params, recalculate)
+        return theta
+
+
+# returns pdb_results_struct that comes from CV on a dataset.  H is fixed.
+class bqW(wrapper.obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        
+        data = self.get_param(params, 'data')
+        cv_results = cv_results_struct(data)
+        for fold in data.get_folds(self, params, recalculate):
+            self.set_param(params, 'trnl', fold.get_training_names())
+            theta = self.get_var_or_file(bpW, params, recalculate, True, True)
+            self.set_param(params, 'theta', theta)
+            self.set_param(params, 'testl', fold.get_testing_names())
+            results = self.get_var_or_file(boW, params, recalculate, True, True)
+            cv_results.add(fold, theta, self.get_param(params, 'H'), results)
+        return cv_results
+
+
+# returns a fold.  source instance and num folds and which fold should be specified in params
+class brW(wrapper.obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        return fold(maker, params, recalculate)
+
+
+
+# for a given dataset on which to do CV, searches for the best H.  data is specified in params
+class bsW(wrapper.obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        
+        searcher = H_searcher()
+        H_search_results = H_results()
+        while not H_searcher.done():
+            next_H = H_searcher.get_next_H()
+            self.set_param(params, 'H', next_H)
+            cv_results = self.get_var_or_file(bqW, params, recalculate, True)
+            H_search_results.add(next_H, cv_results)
+        return H_search_results.best_H()
+
+# does the outer cross validation
+class btW(wrapper.obj_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        inner_k = self.get_param(params, 'innerk')
+        outer_k = self.get_param(params, 'outerk')
+        data = self.get_var_or_file(params, buW, recalculate)
+        self.set_param(params, 'fldk', outer_k):
+        self.set_param(params, 'fsrc', data)
+        
+        cv_results = cv_results_struct(data)
+
+        for fold in data.get_folds(self, params, recalculate):
+            self.set_param(params, 'fldk', inner_k)
+            self.set_param(params, 'fsrc', fold)
+            H = self.get_var_or_file(params, bsW, recalculate, True)
+            
+
+
+
 def print_stuff(x):
     #pdb.set_trace()
     print 'printing!!!!!!!!'

@@ -8,6 +8,11 @@ def dec(f):
     def affects_which_wrappers_are_called(self, key, val):
         if val.__class__.__name__ in ['int', 'float', 'str']:
             return False
+        import cross_validation_pseudo as cv
+        if type(val) == type(cv.data) or type(val) == cv.fold:
+            return False
+        elif type(val) == param:
+            return False
         else:
             return True
 
@@ -32,6 +37,7 @@ def dec(f):
     def cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate, old_obj = None):
 #        pdb.set_trace()
         # add empty sets to the used_keys and dependents keys and set params
+
         self.temp_used_keys.append(set())
         self.temp_dependents_keys.append(set())
         self.temp_new_param_keys.append(set())
@@ -90,13 +96,9 @@ def dec(f):
         return self.used_keys_cache.get(recalculate), all_keys, obj
     
     def h(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-#        if recalculate:
-#            print self, "RECALCULATING!"
-#        pdb.set_trace()
-#        if self.__class__.__name__ != 'wrapper_catalog':
-#            assert recalculate == global_stuff.recalculate
-#        pdb.set_trace()
 
+        # make a copy of params
+        params = params.get_copy()
 
         if self.used_keys_cache.has(recalculate) and self.set_keys_cache.has(recalculate):
             used_keys = self.used_keys_cache.get(recalculate)
