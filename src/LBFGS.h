@@ -291,7 +291,7 @@ if (proc_id==0)
 
 	
 //if (iterations%10  == 0)
- if(false)
+ if(true)
 {
   
 
