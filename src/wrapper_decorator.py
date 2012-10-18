@@ -11,6 +11,8 @@ def dec(f):
         import cross_validation_pseudo as cv
         if type(val) == type(cv.data) or type(val) == cv.fold:
             return False
+        elif key == 'md':
+            return True
         elif type(val) == param:
             return False
         else:
@@ -29,7 +31,11 @@ def dec(f):
         return param(temp)
 
     def get_all_keys(self, params, recalculate):
-        return self.temp_used_keys[-1].union(self.temp_dependents_keys[-1]) - self.temp_new_param_keys[-1]
+        A = self.temp_used_keys[-1]
+        B = self.temp_dependents_keys[-1]
+        C = self.temp_new_param_keys[-1]
+        return ((A | B) - C) | (A & B & C)
+        #return (self.temp_used_keys[-1].union(self.temp_dependents_keys[-1]) - self.temp_new_param_keys[-1]) + 
 
     def get_objects_key(self, params, all_keys):
         return param.restriction(params, all_keys)
@@ -54,7 +60,7 @@ def dec(f):
             self.temp_used_keys.pop()
             self.temp_dependents_keys.pop()
             self.temp_new_param_keys.pop()
-            raise
+            raise Exception
 #        print '        finished to calculate NEW stuff in wrapper ', self, recalculate, to_pickle, to_filelize, always_recalculate
 #        print '                                                             ', len(self.temp_used_keys)
         # always pickle used_keys and all_keys
@@ -99,7 +105,7 @@ def dec(f):
 
         # make a copy of params
         params = params.get_copy()
-
+#        print self, recalculate, params
         if self.used_keys_cache.has(recalculate) and self.set_keys_cache.has(recalculate):
             used_keys = self.used_keys_cache.get(recalculate)
             set_keys = self.set_keys_cache.get(recalculate)
@@ -123,7 +129,7 @@ def dec(f):
                     obj = self.cache.get(object_key, recalculate)
                     if always_recalculate:
                         return cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate, obj)
-                    return used_keys, all_keys, obj
+                    return used_keys, all_keys, obj, all_keys_
         return cache_everything_f_poster(self, params, recalculate, to_pickle, to_filelize, always_recalculate)
 
     return h

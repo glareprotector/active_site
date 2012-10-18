@@ -46,10 +46,11 @@ class wrapper(object):
     # in general, the methods i make should have a maker pointer so that params can be accessed thru the maker
     def get_name(self, object_key, to_reindex = global_stuff.to_reindex):
         if not self.super_shorten():
+            assert False
             if not self.makes_index():
-                return self.__repr__() + str(object_key)
+                return self.__repr__() + helper.shorten(str(object_key))
             elif not to_reindex:
-                return self.__repr__() + str(object_key)
+                return self.__repr__() + helper.shorten(str(object_key))
             else:
                 pdb.set_trace()
                 assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
@@ -350,3 +351,8 @@ class famished_wrapper(object):
         used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize)
         return x
 
+class experiment_type_wrapper(wrapper):
+
+    def get_folder(self, object_key):
+        folder = str(self.get_param(object_key, 'wif', False)) + '_' + str(self.get_param(object_key, 'wob', False)) + '/'
+        return global_stuff.RESULTS_FOLDER + folder + self.__repr__() + '/'
