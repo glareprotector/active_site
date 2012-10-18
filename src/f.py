@@ -141,7 +141,7 @@ class ayW(obj_wrapper):
     #categorical feature fxn for DSSP
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
-#        pdb.set_trace()
+
         self.set_param(params, 'g', axW)
         self.set_param(params, 'values', [ [x] for x in constants.DSSP_CATEGORIES])
         return self.get_var_or_file(sW, params, recalculate, False)

@@ -125,6 +125,7 @@ class wrapper(object):
 
         used_keys, all_keys, x, all_keys_key_key_set = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate)
         self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
+        self.temp_dependents_all_keys_key_key_sets[-1] = self.temp_dependents_all_keys_key_key_sets[-1].union(all_keys_key_key_set)
         return x
 
 
@@ -201,6 +202,7 @@ class obj_wrapper(wrapper):
 class mat_obj_wrapper(obj_wrapper):
     
     def get_file_dumper(self, maker, params):
+
         return mfdW(maker, params)
         maker.set_param(params, "which_wrapper_class", wrapper.mfdW)
         return maker.get_var_or_file(wrapper_catalog, params, True, False, False)
@@ -241,7 +243,7 @@ class file_wrapper(wrapper):
 class generic_dumper_wrapper(file_wrapper):
 
     def __repr__(self):
-        return self.__class__.__name__ # + '-' + self.source_wrapper.__repr__()
+        return self.__class__.__name__  + '-' + self.source_wrapper.__repr__()
 
 
     def get_name(self, object_key, to_reindex = global_stuff.to_reindex):

@@ -175,7 +175,7 @@ class jW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
         #temp = self.get_var_or_file(adW, params, recalculate, False, False, False)
         
-        pdb.set_trace()
+
         feature_list = self.get_param(params, 'n')
         aa_to_pos = self.get_var_or_file(aW, params, recalculate, True)
         node_features = []
@@ -262,7 +262,7 @@ class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
 
-       
+        #pdb.set_trace()
         mode = self.get_param(params, 'md')
 
 
@@ -318,6 +318,7 @@ class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
             mat.append(scores[pos:pos+sizes[i]])
             mat.append(true_states[pos:pos+sizes[i]])
             pos = pos + sizes[i]
+        #pdb.set_trace()
         return mat
 
 # for features i can't get automatically, assume that there is folder for each chain containing the features.  wrappers will then read from those folders
@@ -386,7 +387,7 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.short
     # params will be those required by experiment_results, which are those required by experiment_info.
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = True, old_obj = None):
-        pdb.set_trace()
+
 
         self.get_param(params, 'md')
 
@@ -402,7 +403,10 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.short
         #    self.set_param(params, 'iter', self.get_param(params, 'wfld'))
         self.set_param(params, 'which_wrapper_class', which_classifier_roc_input)
         pW_instance = self.old_get_var_or_file(wc, params, True, False, False)
+
+        print "OOOOOHHHHHH"
         if always_recalculate:
+
             f  = self.old_get_var_or_file(pW_instance.cache.file_dumper_wrapper, params, recalculate, False, False, 2)
         else:
             f  = self.old_get_var_or_file(pW_instance.cache.file_dumper_wrapper, params, recalculate, False, False, False)
@@ -616,7 +620,7 @@ class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_type_wrapper, wrapper.shor
         these_results = [float(these_results[i]) / float(total_num_sites) for i in range(len(cutoffs))]
 
         to_write = [self.get_param(params, 'mx', record=False), total_num_sites] + these_results
-#        pdb.set_trace()
+
         if old_obj == None:
             return [to_write]
         else:
@@ -774,7 +778,7 @@ class avW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-#        pdb.set_trace()
+
         input_f = self.get_var_or_file(fW, params, recalculate, False, False, False)
         subprocess.call([global_stuff.DSSP_PATH, input_f.name, self.get_holding_location()])
 #        pdb.set_trace()
@@ -1227,10 +1231,11 @@ class ceW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
         self.set_param(params, 'f', a_data)
         self.set_param(params, 'md', 1)
         the_overall_results = self.get_var_or_file(btW, params, recalculate, False, False, False)
+
         self.get_var_or_file(qW, params, False, False, True)
 
         metric = self.get_var_or_file(ahW, params, False, True, True)
-        results = metric + the_overall_results.best_hps
+        results = metric , the_overall_results.best_hps
 
         return results
 

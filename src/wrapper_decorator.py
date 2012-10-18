@@ -6,13 +6,14 @@ import global_stuff
 def dec(f):
 
     def affects_which_wrappers_are_called(self, key, val):
+        if key == 'md':
+            
+            return True
         if val.__class__.__name__ in ['int', 'float', 'str']:
             return False
         import cross_validation_pseudo as cv
         if type(val) == type(cv.data) or type(val) == cv.fold:
             return False
-        elif key == 'md':
-            return True
         elif type(val) == param:
             return False
         else:
@@ -34,11 +35,12 @@ def dec(f):
 
     def get_all_keys_key_key_set(self, params, used_keys, set_keys):
         ans = set()
-        for key in used_keys:
+        for key in used_keys.union(self.temp_dependents_all_keys_key_key_sets[-1]):
             if key not in set_keys:
                 if affects_which_wrappers_are_called(self, key, params.get_param(key)):
                     ans.add(key)
-        return ans.union(self.temp_dependents_all_keys_key_key_sets[-1])
+        #return ans.union(self.temp_dependents_all_keys_key_key_sets[-1])
+        return ans
 
 
     def get_all_keys(self, params, recalculate):
