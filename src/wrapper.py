@@ -71,10 +71,12 @@ class wrapper(object):
         self.temp_used_keys = []
         self.temp_dependents_keys = []
         self.temp_new_param_keys = []
+        self.temp_dependents_all_keys_key_key_sets = []
         maker.set_param(params, "source_instance", self)
         self.used_keys_cache = caches.ukcO(maker, params)
-
         self.set_keys_cache = caches.skcO(maker, params)
+        self.all_keys_key_key_set_cache = caches.akkkscO(maker, params)
+        
         self.all_keys_cache = caches.akcO(maker, params)
         if self.makes_index():
             self.object_key_to_index = caches.index_cache(maker, params)
@@ -113,14 +115,15 @@ class wrapper(object):
         from wc import wc
 #        print wc.object_key_to_index.dump
         the_wrapper = self.old_get_var_or_file(wc, params, True, False, False)
-        used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate)
+        used_keys, all_keys, x, all_keys_key_key_set = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate)
         self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
+        self.temp_dependents_all_keys_key_key_sets[-1] = self.temp_dependents_all_keys_key_key_sets[-1].union(all_keys_key_key_set)
 #        print '                      returned ', self, wrapper, recalculate, to_pickle, to_filelize, always_recalculate
         return x
 
     def old_get_var_or_file(self, the_wrapper, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False):
 
-        used_keys, all_keys, x = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate)
+        used_keys, all_keys, x, all_keys_key_key_set = the_wrapper.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate)
         self.temp_dependents_keys[-1]  = self.temp_dependents_keys[-1].union(all_keys)
         return x
 

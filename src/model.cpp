@@ -780,9 +780,13 @@ arbi_array<num1d> model::get_dL_dTheta(PyObject* pMaker, PyObject* pParams, bool
   //ans.fill(0);
   ans = 0;
   cout<<"gradient: "<<flush;
+
   for(int i = 0; i < this->training_indicies.size().i0; i++){
     //cout<<training_indicies(i)<<" "<<flush;
     ans = ans + data(training_indicies(i)).get_dL_dTheta(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
+  }
+  for(int i = 0; i < ans.size().i0; i++){
+    //cout<<ans(i)<<" ";
   }
   //cout<<endl;
   unregister_pys();
@@ -867,7 +871,11 @@ num model::get_L(PyObject* pMaker, PyObject* pParams, bool recalculate, int whic
   }
 
   num ans = 0, temp;
-  //cout<<"function: "<<endl;
+  cout<<"function: "<<endl;
+  for(int i = 0; i < theta.size().i0; i++){
+    //cout<<theta(i)<<" ";
+  }
+  cout<<endl;
   for(int i = 0; i < training_indicies.size().i0; i++){
     //cout<<" iiiiiiiiiiiiiiiiiii "<<training_indicies(i)<<" "<<data(training_indicies(i)).pdb_name<<" "<<i<<endl;
     //cout<<training_indicies(i)<<" "<<flush;
@@ -971,8 +979,10 @@ class My_Minimizer: public Minimizer{
     //int which_obj = p_model->which_obj;
 
     double ans = p_model->get_L(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
-    assert(isfinite(ans));
-
+    //assert(isfinite(ans));
+    if(!isfinite(ans)){
+      throw string("function value not finite");
+    }
     #ifndef SERIAL
 
     // now, send all messages to root for reducing.  then broadcast result back to everyone

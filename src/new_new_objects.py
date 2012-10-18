@@ -175,7 +175,7 @@ class jW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
         #temp = self.get_var_or_file(adW, params, recalculate, False, False, False)
         
-#        pdb.set_trace()
+        pdb.set_trace()
         feature_list = self.get_param(params, 'n')
         aa_to_pos = self.get_var_or_file(aW, params, recalculate, True)
         node_features = []
@@ -285,7 +285,7 @@ class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
 
         elif mode == 1:
             # trying to get outer cv results
-            the_overall_results = self.get_var_or_file(btW, params, recalculate, True, True, False)
+            the_overall_results = self.get_var_or_file(btW, params, recalculate, False, False, False)
             results = the_overall_results.get_raw_results()
 
         elif mode == 2:
@@ -294,7 +294,12 @@ class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
             the_train_test_results = self.get_var_or_file(bwW, params, recalculate, True, True, False)
             results = the_train_test_results.get_raw_results()
 
+        elif mode == 3:
+            # trying to get inner cv results
+            # need to have ifold specified
+            the_cv_results = self.get_var_or_file(cdW, params, recalculate, False, False, False)
 
+            results = the_cv_results.get_raw_results()
 
         scores = results.scores
         true_states = results.true_classes
@@ -348,6 +353,8 @@ class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
 
+        self.get_param(params, 'md')
+
         results = self.get_var_or_file(nW, params, recalculate, to_pickle, False, always_recalculate)
 
         assert len(results) % 3 == 0
@@ -379,11 +386,16 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.short
     # params will be those required by experiment_results, which are those required by experiment_info.
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = True, old_obj = None):
+        pdb.set_trace()
+
+        self.get_param(params, 'md')
+
 
         # first get instance of pW
         from wc import wc
         # figure out which roc file input wrapper to use
-        which_classifier_roc_input = self.get_param(params, 'wclf')
+        #which_classifier_roc_input = self.get_param(params, 'wclf')
+        which_classifier_roc_input = pW
         # if using svm, treat 'iter' as the fold number just so i don't have to change roc curve code yet
         #import try_svm
         #if which_classifier_roc_input == try_svm.atW:
@@ -558,12 +570,15 @@ class agW(wrapper.msa_obj_wrapper, wrapper.by_pdb_folder_wrapper):
         return to_return
 
 # if a chain has k true sites, it sees if any of the k most highly ranked sites are within a certain cut-off
-class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
+class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_type_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = True, old_obj = None):
 
-        results = self.get_var_or_file(nW, params, recalculate, True, True, always_recalculate)
+#        pdb.set_trace()
+        self.get_param(params, 'md')
+
+        results = self.get_var_or_file(nW, params, recalculate, False, False, always_recalculate)
         num_samples = len(results) / 3
         cutoffs = global_stuff.metric_cutoffs
         these_results = [0 for i in range(len(cutoffs))]
@@ -894,10 +909,11 @@ class bhW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
         # get, for each site, the distance to closest active site
 #        pdb.set_trace()
         closest_dists = self.get_var_or_file(aqW, params, recalculate, True, True, False)
-        which_f = self.get_param(params, 'wtpr')
+        #which_f = self.get_param(params, 'wtpr')
+        which_f = 0
         if which_f == 0:
+            taper_c = self.get_param(params,'hp').get_param('nwc')
             def f(x):
-                taper_c = self.get_param(params, 'nwc')
                 return math.exp(taper_c * x)
         elif which_f == 1:
             def f(x):
@@ -976,6 +992,7 @@ class blW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.shor
         # first get instance of pW
         from wc import wc
         # figure out which roc file input wrapper to use
+        pdb.set_trace()
         which_classifier_roc_input = self.get_param(params, 'wclf')
         # if using svm, treat 'iter' as the fold number just so i don't have to change roc curve code yet
         #import try_svm
@@ -1054,6 +1071,7 @@ class brW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+
         data_list_file = self.get_param(params, 'd')
         return cv.data(self, params, recalculate, data_list_file)
 
@@ -1062,9 +1080,9 @@ class buW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        source = self.get_param(params, 'fsc')
-        num_folds = self.get_param(params, 'fldk')
-        which_fold = self.get_param(params, 'wfldk')
+        source = self.get_param(params, 's')
+        num_folds = self.get_param(params, 'm')
+        which_fold = self.get_param(params, 'k')
         return cv.fold(self, params, recalculate, source, which_fold, num_folds)
 
 
@@ -1088,7 +1106,11 @@ class byW(wrapper.obj_wrapper):
 
 # for a specified fold, returns the result of training on fold's training, testing on fold's testing.  actually, returns (fold, results, object_key) list
 # hyperparams should also be passed as separate parameter
-class bwW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper, wrapper.experiment_results_wrapper):
+class bwW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper, wrapper.experiment_type_wrapper):
+
+    #def get_folder(self, object_key):
+    #    folder = str(self.get_param(object_key, 'wif', False)) + '_' + str(self.get_param(object_key, 'wob', False)) + '/'
+    #    return global_stuff.RESULTS_FOLDER + folder
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
@@ -1103,7 +1125,7 @@ class btW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper, wrapper.experiment_
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-
+#        pdb.set_trace()
         return cv.overall_results(self, params, recalculate)
 
 
@@ -1123,17 +1145,45 @@ class test(wrapper.obj_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
         a_data = self.get_var_or_file(brW, params, True, False, False)
-
+        self.set_param(params, 'f')
         folds = a_data.get_folds(self, params, recalculate, 4)
         return folds, folds[0].get_folds(self, params, recalculate, 4)
 
 
 
+class ccW(wrapper.obj_wrapper):
+    
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+
+        hp_values = helper.read_hp_values(self.get_param(params, 'hpvf'))
+        return hp_values
+        """
+        the_file = constants.HP_VALUES_FOLDER + self.get_param(params, 'hpvf')
+        # format is param name followed by the values
+        f = open(the_file, 'r')
+        the_dict = {}
+        for line in f:
+            #s = line.split(line, ',')
+            s = line.strip().split(',')
+            param_name = s[0]
+            param_values = []
+            for i in range(1, len(s)):
+                param_values.append(float(s[i]))
+            the_dict[param_name] = param_values
+        return param.param(the_dict)
+        """
+
 class caW(wrapper.obj_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        hp_values = self.get_param(params, 'hpv')
+
+
+
+        # instead, will read hp_values from another wrapper that just reads files
+        hp_values = self.get_var_or_file(ccW, params, False, False, False, False)
+        #hp_values = self.get_param(params, 'hpv')
         total_jobs = self.get_param(params, 'tj')
         which_job = self.get_param(params, 'wj')
 
@@ -1155,11 +1205,35 @@ class cbW(wrapper.obj_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        
+
         a_hp_searcher = cv.hp_searcher(self, params, recalculate)
         self.set_param(params, 'hps', a_hp_searcher)
+
         return cv.hp_search_results(self, params, recalculate)
         
+
+# make wrapper that returns cv search results
+class cdW(wrapper.obj_wrapper, wrapper.experiment_results_wrapper):
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+
+        return cv.cv_results(self, params, recalculate)
+
+class ceW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+
+        a_data = self.get_var_or_file(brW, params, True, False, False)
+        self.set_param(params, 'f', a_data)
+        self.set_param(params, 'md', 1)
+        the_overall_results = self.get_var_or_file(btW, params, recalculate, False, False, False)
+        self.get_var_or_file(qW, params, False, False, True)
+
+        metric = self.get_var_or_file(ahW, params, False, True, True)
+        results = metric + the_overall_results.best_hps
+
+        return results
+
 
 
 def print_stuff(x):

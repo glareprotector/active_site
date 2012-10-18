@@ -55,8 +55,11 @@ class file_cache_for_wrapper(object):
 
     # creates folder for object whose type is specified by the wrapper. this step does the prep work allowing the object to be put in the cache, which in this case is the folder in the file system
     def allocate(self, object_key):
-        if not os.path.exists(self.the_wrapper.get_folder(object_key)):
+        #if not os.path.exists(self.the_wrapper.get_folder(object_key)):
+        try:
             os.makedirs(self.the_wrapper.get_folder(object_key))
+        except:
+            pass
 
 # act of caching: putting object into cache's dictionary
 class object_cache_for_wrapper(object):
@@ -109,6 +112,12 @@ class object_cache_for_wrapper(object):
     def set(self, object_key, object, to_pickle, params, to_filelize, always_recalculate = False):
         #print self.the_wrapper
         #pdb.set_trace()
+
+
+        if len(self.dump) > constants.CACHE_MAX_SIZE:
+            self.dump.clear()
+
+        
         self.dump[object_key] = object
         if to_pickle: 
             #pdb.set_trace()
@@ -260,6 +269,9 @@ class ukcO(object):
             self.pickle_created = True
 
 class skcO(ukcO):
+    pass
+
+class akkkscO(ukcO):
     pass
 
 import wrapper

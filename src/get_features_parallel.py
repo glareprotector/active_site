@@ -1,12 +1,17 @@
 import wc
-from parameters import the_params
+
 import new_new_objects as objects
 import global_stuff
 import helper
 from mpi4py import MPI
 import pdb
 import helper
+import sys
 
+file_location = sys.argv[1]
+
+
+folder_name, the_params = helper.read_param(file_location)
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()

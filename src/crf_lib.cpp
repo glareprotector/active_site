@@ -30,8 +30,13 @@ void init_crf(){
   arbi_array<pdb_name_struct[1]> training_pdb_list;
   model m(pMaker, pParams, recalculate, training_pdb_list, testing_pdb_list, num_states);
   cout<<"ONE"<<endl;
-
-  return m.get_results_struct(pMaker, pParams, recalculate, theta, which_infer);
+  try{
+    return m.get_results_struct(pMaker, pParams, recalculate, theta, which_infer);
+  }
+  catch(string e){
+    cout<<e<<endl;
+    return pdb_results_struct();
+  }
  }
  
  arbi_array<num1d> get_theta_given_training_data_and_hypers(PyObject* pMaker, PyObject* pParams, bool recalculate, int num_states, int max_iter, int which_obj, int which_reg, int which_infer, pdb_struct_list training_pdb_list){
@@ -51,7 +56,14 @@ void init_crf(){
    model m(pMaker, pParams, recalculate, training_pdb_list, testing_pdb_list, num_states);
    My_Minimizer* minner = new My_Minimizer(&m);
    vector<num> w0(m.theta_length, 0);
-   return minner->LBFGS(pMaker, pParams, recalculate, w0, max_iter, which_obj, which_reg, which_infer);
+   try{
+     return minner->LBFGS(pMaker, pParams, recalculate, w0, max_iter, which_obj, which_reg, which_infer);
+   }
+   catch(string e){
+     cout<<e<<endl;
+     arbi_array<num1d> to_return;
+     return to_return;
+   }
  }
  
 

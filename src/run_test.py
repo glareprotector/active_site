@@ -5,7 +5,7 @@ import wc
 
 import new_new_objects as objects
 
-from parameters import the_params
+
 
 import pdb
 
@@ -15,11 +15,15 @@ from param import param
 
 
 #import run_small_search
+import helper
 
+import sys
+info_file = sys.argv[1]
 
-results = wc.get_stuff(objects.ahW, the_params, False, False, True)
-#a = results[0]
-#b = results[1]
+relative_folder, the_params = helper.read_param(info_file)
 
-pdb.set_trace()
+the_params.set_param('tj',1)
+
+results = wc.get_stuff(objects.ceW, the_params, False, True, True)
+
 print 3

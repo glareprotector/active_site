@@ -12,10 +12,9 @@ wc = wrapper.wrapper_catalog(useless, param.param({}))
 
 def get_stuff(wrapper_class, params, recalculate, to_pickle, to_filelize, always_recalculate = False):
     params.set_param('which_wrapper_class', wrapper_class)
-    wc_used_keys, wc_all_keys, wrapper_instance = wc.constructor(params, True, False, False)
-
+    wc_used_keys, wc_all_keys, wrapper_instance, all_keys_key_key_set = wc.constructor(params, True, False, False)
     try:
-        stuff_used_keys, stuff_all_keys, stuff = wrapper_instance.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate = always_recalculate)
+        stuff_used_keys, stuff_all_keys, stuff, stuff_all_keys_key_key_set = wrapper_instance.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate = always_recalculate)
     except Exception, err:
         print 'ERROR when calling get_stuff with this error', err, params
     return stuff

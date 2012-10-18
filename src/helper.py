@@ -5,9 +5,79 @@ import constants
 import string
 import re
 import math
-
+import global_stuff
 import pdb
+import param
 
+# also sets global_stuff.RESULTS_FOLDER to proper value
+def read_param(file_location):
+    
+    # read folder_name
+    f = open(constants.INFO_FOLDER + file_location)
+    the_params = param.param({})
+    hp_values = param.param()
+    folder_name = f.readline().strip()
+
+    global_stuff.RESULTS_FOLDER = global_stuff.RESULTS_BASE_FOLDER + folder_name + '/'
+
+    for line in f.readlines():
+        print line
+        if line[0] != '#':
+            s = line.strip().split(',')
+            if s[0] != 'hp':
+                the_name = s[0]
+                if the_name == 'n':
+                    node_features = []
+                    for i in range(1, len(s)):
+                        node_features.append(constants.get_master_node_feature_list()[int(s[i])])
+                    the_params.set_param('n', node_features)
+                if the_name == 'e':
+                    edge_features = []
+                    for i in range(2, len(s)):
+                        edge_features.append(constants.get_master_edge_feature_list()[int(s[i])])
+                    the_params.set_param('e', edge_features)
+                try:
+                    the_type = s[1]
+                    if the_type == 'f':
+                        the_params.set_param(the_name, float(s[2]))
+                    elif the_type == 'i':
+                        the_params.set_param(the_name, int(s[2]))
+                    elif the_type == 's':
+                        the_params.set_param(the_name, s[2])
+                except:
+                    pass
+
+    # hp values file happens to be the same as info file, so set that
+
+    the_params.set_param('hpvf', file_location)
+    return folder_name, the_params
+
+def read_hp_values(file_location):
+
+    # read folder_name
+    f = open(constants.INFO_FOLDER + file_location)
+
+    hp_values = param.param()
+    folder_name = f.readline().strip()
+
+
+
+    for line in f.readlines():
+        s = line.strip().split(',')
+        if s[0] == 'hp':
+            to_add = []
+            the_type = s[2]
+            the_name = s[1]
+            for i in range(3,len(s)):
+                if the_type == 'f':
+                    to_add.append(float(s[i]))
+                elif the_type == 'i':
+                    to_add.append(int(s[i]))
+                elif the_type == 's':
+                    to_add.append(s[i])
+            hp_values.set_param(the_name, to_add)
+
+    return hp_values
 
 def get_aux_folder(pdb_name, chain_letter):
     return constants.AUX_FOLDER + string.lower(pdb_name) + ':' + string.upper(chain_letter) + '/'
@@ -37,10 +107,20 @@ def shorten(x):
     x = re.sub(r'\'','',x)
     x = re.sub(r'class','',x)
     x = re.sub(r' ','',x)
+    x = re.sub(r'<','',x)
+    x = re.sub(r'>','',x)
+    x = re.sub(r'f\.','',x)
+    x = re.sub(r'\),\(',')(',x)
     return x
 
 
 def super_shorten(x):
+
+    x = re.sub(r'\'','',x)
+    x = re.sub(r'class','',x)
+    x = re.sub(r' ','',x)
+
+    
     x = re.sub(r'<','',x)
     x = re.sub(r'>','',x)
     x = re.sub(r'f\.','',x)
@@ -48,7 +128,7 @@ def super_shorten(x):
     #x = re.sub(r'\)\(','|',x)
     #x = re.sub(r'\[\(','[',x)
     #x = re.sub(r'\)\]',']',x)
-
+    #pdb.set_trace()
     return x
 
 

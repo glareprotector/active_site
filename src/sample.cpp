@@ -146,7 +146,7 @@ arbi_array<num2d> sample::get_node_potentials(arbi_array<num1d> theta){
       //cout<<endl;
       node_potentials(i,j) = temp;
       if(isfinite(temp) == false){
-	assert(false);
+	throw string("node potential not finite");
       }
     }
   }
@@ -167,7 +167,8 @@ arbi_array<num3d> sample::get_edge_potentials(arbi_array<num1d> theta){
 	}
 	edge_potentials(i,j,k) = temp;
 	if(isfinite(edge_potentials(i,j,k)) == false){
-	  assert(false);
+	  //assert(false);
+	  throw string("edge potential not finite");
 	}
       }
     }
@@ -222,7 +223,10 @@ void sample::get_marginals_logistic_regression(arbi_array<num2d> node_potentials
 
     for(int j = 0; j < p_model->num_states; j++){
       node_marginals(i,j) /= norm;
-      assert(isfinite(node_marginals(i,j)));
+      if(!isfinite(node_marginals(i,j))){
+	throw string("node marginal not finite");
+      }
+      //assert(isfinite(node_marginals(i,j)));
     }
    
   }
@@ -260,7 +264,10 @@ void sample::get_marginals_mean_field(arbi_array<num2d> node_potentials, arbi_ar
       node_marginals(i,j) = exp(get_node_potential(node_potentials,i,j) - log_sum);
       norm += node_marginals(i,j);
     }
-    assert(isfinite(norm));
+    //assert(isfinite(norm));
+    if(!isfinite(norm)){
+      throw string("norm of node marginal in BP is not finite");
+    }
     for(int j = 0; j < p_model->num_states; j++){
       node_marginals(i,j) /= norm;
     }
@@ -330,7 +337,8 @@ void sample::get_marginals_mean_field(arbi_array<num2d> node_potentials, arbi_ar
   for(int i = 0; i < num_nodes; i++){
     for(int j = 0; j < p_model->num_states; j++){
       if(!isfinite(node_marginals(i,j))){
-	assert(false);
+	//assert(false);
+	throw string("node_marginal in bp is not finite");
       }
     }
   }
@@ -438,7 +446,10 @@ arbi_array<num1d> sample::get_data_likelihood_gradient(arbi_array<num2d> node_ma
   gradient *= -1.0;
   
   for(int i = 0; i < p_model->theta_length; i++){
-    assert(isfinite(gradient(i)));
+    //assert(isfinite(gradient(i)));
+    if(!isfinite(gradient(i))){
+      throw string("gradient not finite");
+    }
   }
   return gradient;
 }
@@ -448,7 +459,10 @@ num sample::get_log_Z(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_
   num energy = 0;
   for(int i = 0; i < num_nodes; i++){
     for(int j = 0; j < p_model->num_states; j++){
-      assert(isfinite(node_marginals(i,j)));
+      //assert(isfinite(node_marginals(i,j)));
+      if(!isfinite(node_marginals(i,j))){
+	throw string("node_marginal in log z is not finite");
+      }
       energy -= node_marginals(i,j) * get_node_potential(node_potentials, i,j);
     }
   }
@@ -457,7 +471,10 @@ num sample::get_log_Z(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_
     int node2 = pos_to_edge(i).second;
     for(int j = 0; j < p_model->num_states; j++){
       for(int k = 0; k < p_model->num_states; k++){
-	assert(isfinite(edge_marginals(i,j,k)));
+	//assert(isfinite(edge_marginals(i,j,k)));
+	if(!isfinite(edge_marginals(i,j,k))){
+	  throw string("edge_marginal is not finite");
+	}
 	energy -= edge_marginals(i,j,k) * get_edge_potential(edge_potentials, node1,node2,j,k);
       }
     }
@@ -470,8 +487,14 @@ num sample::get_log_Z(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_
       }
     }
   }
-  assert(isfinite(entropy));
-  assert(isfinite(energy));
+  if(!isfinite(entropy)){
+    throw string("entropy not finite");
+  }
+  if(!isfinite(energy)){
+    throw string("energy not finite");
+  }
+  //assert(isfinite(entropy));
+  //assert(isfinite(energy));
 
   return entropy - energy;
 }
@@ -516,8 +539,15 @@ num sample::get_data_likelihood(arbi_array<num1d> theta, int which_infer){
   //cout<<data_potential<<endl;
   //exit(1);
 
-  assert(isfinite(log_z));
-  assert(isfinite(data_potential));
+  if(!isfinite(log_z)){
+    throw string("log_z not finite");
+  }
+  if(!isfinite(data_potential)){
+    throw string("data_potential not finite");
+  }
+
+  //assert(isfinite(log_z));
+  //assert(isfinite(data_potential));
   num ans = log_z - data_potential;
   if(ans < 0){
     cout<<"log z is less than 0: "<<ans<<endl;
@@ -570,7 +600,10 @@ num sample::get_L_pseudo(arbi_array<num1d> theta){
   for(int i = 0; i < num_nodes; i++){
     L += log(node_pseudos(i,true_states(i)));
   }
-  assert(isfinite(L));
+  if(!isfinite(L)){
+    throw string("pseudo L is not finite");
+  }
+  //assert(isfinite(L));
   return -1.0 * L;
 }
     
@@ -618,12 +651,13 @@ num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
 
     loss += weight * smooth_f(node_marginals(i,1) - fake_true_num(i));
     if(!isfinite(loss)){
-      cout<<node_marginals(i,1)<<" asdf "<<fake_true_num(i)<<endl;
-      assert(false);
+      throw string("nodewise loss not finite");
+      //cout<<node_marginals(i,1)<<" asdf "<<fake_true_num(i)<<endl;
+      //assert(false);
     }
   }
 
-  assert(isfinite(loss));
+  //assert(isfinite(loss));
   return loss;
 }
 
