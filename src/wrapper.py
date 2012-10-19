@@ -48,22 +48,22 @@ class wrapper(object):
         if not self.super_shorten():
             assert False
             if not self.makes_index():
-                return self.__repr__() + helper.shorten(str(object_key))
+                return helper.shorten(str(object_key))
             elif not to_reindex:
-                return self.__repr__() + helper.shorten(str(object_key))
+                return helper.shorten(str(object_key))
             else:
                 pdb.set_trace()
                 assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
-                return self.__repr__() + str(self.maker.object_key_to_index.get(object_key))
+                return str(self.maker.object_key_to_index.get(object_key))
         else:
             if not self.makes_index():
-                return self.__repr__() + helper.super_shorten(str(object_key))
+                return helper.super_shorten(str(object_key))
             elif not to_reindex:
-                return self.__repr__() + helper.super_shorten(str(object_key))
+                return helper.super_shorten(str(object_key))
             else:
                 pdb.set_trace()
                 assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
-                return self.__repr__() + global_stuff.super_shorten(str(self.maker.object_key_to_index.get(object_key)))
+                return global_stuff.super_shorten(str(self.maker.object_key_to_index.get(object_key)))
             
 
     # can't get and set same parameter in the same run of constructor.  at the beginning of constructor, set maker.  in init of whatever object, would fetch maker.  can NOT get, then set.  however, can set and THEN get.
@@ -228,7 +228,8 @@ class file_wrapper(wrapper):
         return constants.HOLDING_FOLDER + str(id(self))
 
     def get_file_location(self, object_key):
-        return self.get_folder(object_key) + self.get_name(object_key)
+
+        return self.get_folder(object_key) + self.__repr__() + '=' + self.get_name(object_key)
 
     def other_init(self, maker, params):
         maker.set_param(params, "source_instance", self)
@@ -243,11 +244,12 @@ class file_wrapper(wrapper):
 class generic_dumper_wrapper(file_wrapper):
 
     def __repr__(self):
-        return self.__class__.__name__  + '-' + self.source_wrapper.__repr__()
+        return self.__class__.__name__  + '*' + self.source_wrapper.__repr__()
 
 
     def get_name(self, object_key, to_reindex = global_stuff.to_reindex):
-        return self.__repr__() + '-' +  self.source_wrapper.get_name(object_key)
+
+        return self.source_wrapper.get_name(object_key)
         
     def other_init(self, maker, params):
         self.source_wrapper = maker.get_param(params, "dumper_source_instance")

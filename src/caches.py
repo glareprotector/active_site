@@ -28,9 +28,6 @@ class file_cache_for_wrapper(object):
 
             location = self.the_wrapper.get_file_location(object_key)
             # check if we want to override
-            if self.the_wrapper.whether_to_override(location):
-                return False
-
             
 
             if os.path.isfile(location):

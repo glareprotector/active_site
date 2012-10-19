@@ -354,7 +354,7 @@ class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
 
-        self.get_param(params, 'md')
+        #self.get_param(params, 'md')
 
         results = self.get_var_or_file(nW, params, recalculate, to_pickle, False, always_recalculate)
 
@@ -389,7 +389,7 @@ class qW(wrapper.file_wrapper, wrapper.experiment_results_wrapper, wrapper.short
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = True, old_obj = None):
 
 
-        self.get_param(params, 'md')
+        #self.get_param(params, 'md')
 
 
         # first get instance of pW
@@ -499,6 +499,7 @@ class adW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
         psi_blast_cline = NcbipsiblastCommandline(cmd = global_stuff.BLAST_PATH, outfmt = 5, query = '\''+f.name+'\'', db = global_stuff.BLASTDB_PATH, out = self.get_holding_location())
         #pdb.set_trace()
         subprocess.call(str(psi_blast_cline), shell=True, executable='/bin/bash')
+
         return open(self.get_holding_location())
 
 
@@ -508,7 +509,7 @@ class aeW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
         # parse blast xml file, then do processing
-        #pdb.set_trace()
+
         blast_xml_handle = self.get_var_or_file(adW, params, recalculate, False, False, False)
         record = NCBIXML.read(blast_xml_handle)
         seen = set()
@@ -580,7 +581,7 @@ class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_type_wrapper, wrapper.shor
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = True, old_obj = None):
 
 #        pdb.set_trace()
-        self.get_param(params, 'md')
+        #self.get_param(params, 'md')
 
         results = self.get_var_or_file(nW, params, recalculate, False, False, always_recalculate)
         num_samples = len(results) / 3
@@ -869,7 +870,7 @@ class bdW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
         
         f = self.get_var_or_file(bcW, params, recalculate, False, False, False)
-        #pdb.set_trace()
+
         lines = f.readlines()
         ans = []
         for i in range(len(lines)):
@@ -877,7 +878,7 @@ class bdW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
             s = string.split(line)
             ll = len(s)
             ans.append([float(s[ll-3]), float(s[ll-2]), float(s[ll-1])])
-        #pdb.set_trace()
+
         return ans
 
 # computes b-factor for a chain
