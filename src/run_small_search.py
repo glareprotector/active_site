@@ -10,11 +10,14 @@ import constants
 
 from param import param
 
-#input: number of outer folds, which fold, total size to split hp_values into, which job it is
+input: number of outer folds, which fold, total size to split hp_values into, which job it is
 num_outer_fold = int(sys.argv[1])
 which_outer_fold = int(sys.argv[2])
 num_pieces = int(sys.argv[3])
 which_piece = int(sys.argv[4])
+
+#info_file = 'mf0'
+
 
 info_file = sys.argv[5]
 #info_file = constants.INFO_FOLDER + info_file

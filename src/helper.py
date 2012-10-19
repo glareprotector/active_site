@@ -33,7 +33,7 @@ def read_param(file_location):
                     the_params.set_param('n', node_features)
                 if the_name == 'e':
                     edge_features = []
-                    for i in range(2, len(s)):
+                    for i in range(1, len(s)):
                         edge_features.append(constants.get_master_edge_feature_list()[int(s[i])])
                     the_params.set_param('e', edge_features)
                 try:
@@ -50,6 +50,12 @@ def read_param(file_location):
     # hp values file happens to be the same as info file, so set that
 
     the_params.set_param('hpvf', file_location)
+
+
+    if len(the_params.get_param('e')) == 0:
+        assert the_params.get_param('wif') != 2
+
+    
     return folder_name, the_params
 
 def read_hp_values(file_location):
