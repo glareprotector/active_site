@@ -1,6 +1,8 @@
 import pdb
 import global_stuff
 import helper
+import string
+
 class param(object):
     
     def __init__(self, param_dict={}):
@@ -25,6 +27,13 @@ class param(object):
         return param(dict(self.param_dict.items() + other.param_dict.items()))
     
     def __str__(self):
+        to_join = []
+        for key in sorted(self.param_dict.keys()):
+            temp = str(key) + '_' + str(self.param_dict[key])
+            to_join.append(temp)
+            
+        return '(' + string.join(to_join, '-') + ')'
+        
         return helper.shorten(str(sorted(self.param_dict.iteritems())))
 
     # returns a list of the keys in sorted key order

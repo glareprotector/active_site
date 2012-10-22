@@ -340,14 +340,20 @@ class cpp_caller{
   static PyObject* cpp_pdb_name_struct_to_py_pdb_name_struct(pdb_name_struct pdb){
     string pdb_name = pdb.pdb_name;
     string chain_letter = pdb.chain_letter;
+    int start = pdb.start;
+    int end = pdb.start;
     PyObject* pPdb_name = PyString_FromCPPString(pdb_name);
     PyObject* pChain_letter = PyString_FromCPPString(chain_letter);
+    PyObject* pStart = PyInt_FromLong(start);
+    PyObject* pEnd = PyInt_FromLong(end);
     // ERROR
     PyObject* pConstructor = cpp_caller::get_module_PyObject(string("cross_validation_pseudo"), string("pdb_name_struct"));
-    PyObject* pResult = PyObject_CallFunctionObjArgs(pConstructor, pPdb_name, pChain_letter, NULL);
+    PyObject* pResult = PyObject_CallFunctionObjArgs(pConstructor, pPdb_name, pChain_letter, pStart, pEnd, NULL);
     Py_DECREF(pConstructor);
     Py_DECREF(pPdb_name);
     Py_DECREF(pChain_letter);
+    Py_DECREF(pStart);
+    Py_DECREF(pEnd);
     return pResult;
   }
 
@@ -356,9 +362,13 @@ class cpp_caller{
 
     PyObject* pPdb_name = get_object_attr(pPdb, string("pdb_name"));
     PyObject* pChain_letter = get_object_attr(pPdb, string("chain_letter"));
-    pdb_name_struct ans = pdb_name_struct(CPPString_From_PyString(pPdb_name), CPPString_From_PyString(pChain_letter));
+    PyObject* pStart = get_object_attr(pPdb, string("start"));
+    PyObject* pEnd = get_object_attr(pPdb, string("end"));
+    pdb_name_struct ans = pdb_name_struct(CPPString_From_PyString(pPdb_name), CPPString_From_PyString(pChain_letter), PyInt_AsLong(pStart), PyInt_AsLong(pEnd));
     Py_DECREF(pPdb_name);
     Py_DECREF(pChain_letter);
+    Py_DECREF(pStart);
+    Py_DECREF(pEnd);
     return ans;
   }
 

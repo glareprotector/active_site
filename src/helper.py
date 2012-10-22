@@ -52,7 +52,7 @@ def read_param(file_location):
     the_params.set_param('hpvf', file_location)
 
 
-    if len(the_params.get_param('e')) == 0:
+    if len(the_params.get_param('e')) != 0:
         assert the_params.get_param('wif') != 2
 
     
@@ -85,8 +85,8 @@ def read_hp_values(file_location):
 
     return hp_values
 
-def get_aux_folder(pdb_name, chain_letter):
-    return constants.AUX_FOLDER + string.lower(pdb_name) + ':' + string.upper(chain_letter) + '/'
+def get_aux_folder(pdb_name, chain_letter, start, end):
+    return constants.AUX_FOLDER + string.lower(pdb_name) + '_' + string.upper(chain_letter) + '_' + str(start) + '_' + str(end) + '/'
 
 # returns mat normalized by columns
 def normalize_mat(mat):

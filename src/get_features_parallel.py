@@ -25,10 +25,14 @@ for i in range(len(data_list)):
     if i % size == rank:
         pdb_name = data_list[i].pdb_name
         chain_letter = data_list[i].chain_letter
+        start = data_list[i].start
+        end = data_list[i].end
         try:
 
-            the_params.set_param('pdb_name', pdb_name)
-            the_params.set_param('chain_letter', chain_letter)
+            the_params.set_param('p', pdb_name)
+            the_params.set_param('c', chain_letter)
+            the_params.set_param('st', start)
+            the_params.set_param('en', end)
             print rank, pdb_name, 'start jw'
             f.write(str(rank) + ' ' + pdb_name + ' start jw\n')
             wc.get_stuff(objects.jW, the_params, global_stuff.recalculate, True, True, False)
@@ -37,7 +41,7 @@ for i in range(len(data_list)):
             wc.get_stuff(objects.kW, the_params, global_stuff.recalculate, True, True, False)
             print rank, pdb_name, 'end kw'
             f.write(str(rank) + ' ' + pdb_name + ' end kw\n')
-            works.append(pdb_name + '_' + chain_letter)
+            works.append(pdb_name + ',' + chain_letter + ',' + str(start) + ',' + str(end))
         except:
             print 'error in ', pdb_name, chain_letter
             f.write(str(rank) + ' ' + pdb_name + ' error\n')

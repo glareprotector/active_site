@@ -99,6 +99,7 @@ class object_cache_for_wrapper(object):
         elif self.pickle_dumper_wrapper.has(object_key, recalculate):
             assert recalculate == False
             f = self.pickle_dumper_wrapper.get(object_key, recalculate)
+
             obj = pickle.load(open(f.name, 'rb'))
             return obj
         raise KeyError
@@ -223,6 +224,7 @@ class ukcO(object):
         return self.__class__.__name__ + '-' + self.the_wrapper.__repr__()
 
     def __init__(self, maker, params):
+
         self.dump = None
         self.val = None
         self.the_wrapper = maker.get_param(params, "source_instance")

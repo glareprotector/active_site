@@ -10,5 +10,4 @@ import global_stuff
 
 
 the_params.set_param('which_wrapperq', objects.fW)
-pdb.set_trace()
 wc.get_stuff(objects.abW, the_params, global_stuff.recalculate, False, False)

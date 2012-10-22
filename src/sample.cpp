@@ -51,7 +51,7 @@ sample::sample(){
   int x;
 }
 
-sample::sample(PyObject* pMaker, PyObject* pParams, bool recalculate, model* _p_model, arbi_array<num2d> _node_features, arbi_array<num2d> _edge_features, arbi_array<int2d> _edges, arbi_array<int1d> _true_states, string _pdb_name, string _chain_letter){
+sample::sample(PyObject* pMaker, PyObject* pParams, bool recalculate, model* _p_model, arbi_array<num2d> _node_features, arbi_array<num2d> _edge_features, arbi_array<int2d> _edges, arbi_array<int1d> _true_states, string _pdb_name, string _chain_letter, int _start, int _end){
 
   register_pys(pMaker, pParams, recalculate);
 
@@ -64,6 +64,8 @@ sample::sample(PyObject* pMaker, PyObject* pParams, bool recalculate, model* _p_
   this->true_states = _true_states;
   this->pdb_name = _pdb_name;
   this->chain_letter = _chain_letter;
+  this->start = _start;
+  this->end = _end;
 
   this->node_to_neighbors = arbi_array< arbi_array<int1d>[1] >(this->num_nodes);
   this->pos_to_edge = arbi_array< pair<int,int>[1] >(this->num_edges);
@@ -157,6 +159,7 @@ arbi_array<num2d> sample::get_node_potentials(arbi_array<num1d> theta){
 
 arbi_array<num3d> sample::get_edge_potentials(arbi_array<num1d> theta){
   arbi_array<num3d> edge_potentials(num_edges, p_model->num_states, p_model->num_states);
+  //cout<<"h "<<edge_potentials.size().i0<<" "<<edge_potentials.size().i1<<" "<<edge_potentials.size().i2<<endl;
   for(int i = 0; i < num_edges; i++){
     for(int j = 0; j < p_model->num_states; j++){
       for(int k = 0; k < p_model->num_states; k++){
@@ -472,6 +475,7 @@ num sample::get_log_Z(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_
     for(int j = 0; j < p_model->num_states; j++){
       for(int k = 0; k < p_model->num_states; k++){
 	//assert(isfinite(edge_marginals(i,j,k)));
+	//cout<<edge_marginals.size().i0<<" "<<edge_marginals.size().i1<<" "<<edge_marginals.size().i2<<endl;
 	if(!isfinite(edge_marginals(i,j,k))){
 	  throw string("edge_marginal is not finite");
 	}
@@ -526,7 +530,11 @@ num sample::get_data_likelihood(arbi_array<num1d> theta, int which_infer){
   arbi_array<num3d> edge_marginals;
 
   get_marginals(node_potentials, edge_potentials, node_marginals, edge_marginals, which_infer);
-
+  //cout<<"c "<<p_model->num_states<<endl;
+  //cout<<"d "<<node_potentials.size().i0<<" "<<node_potentials.size().i1<<endl;
+  //cout<<"e "<<node_marginals.size().i0<<" "<<node_marginals.size().i1<<endl;
+  //cout<<"f "<<edge_potentials.size().i0<<" "<<edge_potentials.size().i1<<" "<<edge_potentials.size().i2<<endl;
+  //cout<<"g "<<edge_marginals.size().i0<<" "<<edge_marginals.size().i1<<" "<<edge_marginals.size().i2<<endl;
   num log_z = get_log_Z(node_potentials, edge_potentials, node_marginals, edge_marginals);
   num data_potential = get_data_potential(node_potentials, edge_potentials);
 
@@ -578,11 +586,16 @@ num sample::get_L(int which_obj, arbi_array<num1d>& theta){
   }
 }
 
-num sample::smooth_f(num x){
-  //return exp(x);
-  /*  PyObject* pSFC = cached_obj_getter::get_param(globals::pParams, string("sfc"));
-  num sfc = PyFloat_AsDouble(pSFC);
-  Py_DECREF(pSFC);*/
+num sample::smooth_f(num x, int fake_true_num){
+
+
+  int which_f = cpp_param::get_param_int(get_pMaker(), get_pParams(), string("wl"));
+
+  if(which_f == 0){
+    num c = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec"));
+    return exp(c*x*x);
+  }
+
 
   num sfc = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("sfc"));
 
@@ -611,49 +624,28 @@ num sample::get_L_pseudo(arbi_array<num1d> theta){
 
 num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
 
-  // set param for pdb_name and chain_letter
   cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
-
-
-
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 
   num loss = 0;
   arbi_array<num2d> node_marginals;
   arbi_array<num3d> edge_marginals;
   get_marginals(theta, node_marginals, edge_marginals, which_infer);
-  //  exit(1);
 
-  /*
-  PyObject* pFakeTrueNum = cached_obj_getter::call_wrapper(string("new_new_objects"), string("bhW"), globals::pParams, globals::recalculate, true, true, false);
-  arbi_array<num1d> fake_true_num = cpp_caller::py_float_list_to_cpp_num_vect(pFakeTrueNum);
-  Py_DECREF(pFakeTrueNum);*/
-
-
+  // get the target value for each node
   arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate(), true, true, false);
-  num pos_weight = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("posw"));
 
+  // get the weight for each node
+  arbi_array<num1d> weights = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("cfW"), get_recalculate(), true, true, false);
 
-  /*
-  PyObject* pPosWeight = cached_obj_getter::get_param(globals::pParams, string("posw"));
-  num pos_weight = PyFloat_AsDouble(pPosWeight);
-  Py_DECREF(pPosWeight);
-  */
 
   for(int i = 0; i < num_nodes; i++){
-    num weight;
-    if(true_states(i) == 1){
-      weight = pos_weight;
-    }
-    else{
-      weight = 1.0;
-    }
-
-    loss += weight * smooth_f(node_marginals(i,1) - fake_true_num(i));
+    // smooth function should depend on true value
+    loss += weights(i) * smooth_f(node_marginals(i,1) - fake_true_num(i), fake_true_num(i));
     if(!isfinite(loss)){
       throw string("nodewise loss not finite");
-      //cout<<node_marginals(i,1)<<" asdf "<<fake_true_num(i)<<endl;
-      //assert(false);
     }
   }
 
@@ -664,44 +656,22 @@ num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
 void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu){
 
 
-  // set param for pdb_name and chain_letter
-
   cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
-
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 
   dL_dNode_Mu = arbi_array<num2d>(num_nodes, 2);
-  //dL_dNode_Mu.fill(0);
   dL_dNode_Mu = 0;
   
-
-  /*
-  PyObject* pFakeTrueNum = cached_obj_getter::call_wrapper(string("new_new_objects"), string("bhW"), globals::pParams, globals::recalculate, true, true, false);
-  arbi_array<num1d> fake_true_num = cpp_caller::py_float_list_to_cpp_num_vect(pFakeTrueNum);
-  Py_DECREF(pFakeTrueNum);
-
-  PyObject* pPosWeight = cached_obj_getter::get_param(globals::pParams, string("posw"));
-  num pos_weight = PyFloat_AsDouble(pPosWeight);
-  Py_DECREF(pPosWeight);*/
-  
-
   arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate(), true, true, false);
-  num pos_weight = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("posw"));
-
-
+  arbi_array<num1d> weights = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("cfW"), get_recalculate(), true, true, false);
 
   for(int i = 0; i < num_nodes; i++){
-    num weight;
-    if(true_states(i) == 1){
-      weight = pos_weight;
-    }
-    else{
-      weight = 1.0;
-    }
-    dL_dNode_Mu(i,1) = weight * d_smooth_f(node_marginals(i,1) - fake_true_num(i));
+
+    dL_dNode_Mu(i,1) = weights(i) * d_smooth_f(node_marginals(i,1) - fake_true_num(i), fake_true_num(i));
   }
   dL_dEdge_Mu = arbi_array<num3d>(num_edges, 2, 2);
-  //dL_dEdge_Mu.fill(0);
   dL_dEdge_Mu = 0;
 }
 
@@ -734,7 +704,8 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta, int which_infer){
 
   cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
-
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 
   /*
   PyObject* pResult = cached_obj_getter::call_wrapper(string("new_new_objects"), string("apW"), globals::pParams, globals::recalculate, false, false, false);
@@ -770,7 +741,7 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta, int which_infer){
       exp_val += cumulative * (sorted_distances(i,j) - sorted_distances(i,j-1));
     }
 
-    loss += imp(i) * smooth_f(fabs(exp_val - closest_site_dist));
+    loss += imp(i) * smooth_f(fabs(exp_val - closest_site_dist), closest_site_dist);
 
   }
 
@@ -778,12 +749,17 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta, int which_infer){
 
 }
 
-num sample::d_smooth_f(num x){
-  //return exp(x);
-  /*
-  PyObject* pSFC = cached_obj_getter::get_param(globals::pParams, string("sfc"));
-  num sfc = PyFloat_AsDouble(pSFC);
-  Py_DECREF(pSFC);*/
+num sample::d_smooth_f(num x, int fake_true_num){
+
+
+  int which_f = cpp_param::get_param_int(get_pMaker(), get_pParams(), string("wl"));
+  
+  if(which_f == 0){
+    num c = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec"));
+    return exp(c*x*x)*2.0*c;
+  }
+  
+				      
 
   num sfc = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("sfc"));
 
@@ -803,6 +779,8 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi
 
   cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 
   /*
   // error: what is truncated length is different for different sites?
@@ -866,7 +844,7 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi
       }      
     }
     //node_seconds.scale(d_smooth_f(inside - closest_site_dist));
-    node_seconds *= (d_smooth_f(inside - closest_site_dist));
+    node_seconds *= (d_smooth_f(inside - closest_site_dist, closest_site_dist));
     for(int j = 0; j < num_nodes; j++){
       dL_dNode_Mu(j,0) += imp(i) * node_seconds(j);
     }

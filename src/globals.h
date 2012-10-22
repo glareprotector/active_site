@@ -50,20 +50,26 @@ struct pdb_name_struct{
   pdb_name_struct(){
     this->pdb_name = string("");
     this->chain_letter = string("");
+    this->start = -1;
+    this->end = -1;
   }
 
 
-  pdb_name_struct(string pdb_name, string chain_letter){
+  pdb_name_struct(string pdb_name, string chain_letter, int start, int end){
     this->pdb_name = pdb_name;
     this->chain_letter = chain_letter;
+    this->start = start;
+    this->end = end;
   }
 
   bool operator==(pdb_name_struct other){
-    return other.pdb_name==this->pdb_name && other.chain_letter == this->chain_letter;
+    return other.pdb_name==this->pdb_name && other.chain_letter == this->chain_letter && other.start == this->start && other.end == this->end;
   }
 
   string pdb_name;
   string chain_letter;
+  int start;
+  int end;
 
 };
 

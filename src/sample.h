@@ -91,11 +91,14 @@ class sample{
 
   string pdb_name;
   string chain_letter;
+  int start;
+  int end;
+
 
   model* p_model;
   num get_node_potential(arbi_array<num2d>&, int, int);
   num get_edge_potential(arbi_array<num3d>&, int, int, int, int);
-  sample(PyObject*, PyObject*, bool, model*, arbi_array<num2d>, arbi_array<num2d>, arbi_array<int2d>, arbi_array<int1d>, string, string);
+  sample(PyObject*, PyObject*, bool, model*, arbi_array<num2d>, arbi_array<num2d>, arbi_array<int2d>, arbi_array<int1d>, string, string, int, int);
   sample();
 
   arbi_array<num2d> get_node_potentials(arbi_array<num1d> theta);
@@ -144,8 +147,8 @@ class sample{
   void get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu);
   num get_L_nodewise(arbi_array<num1d> theta, int which_infer);
 
-  num smooth_f(num x);
-  num d_smooth_f(num x);
+  num smooth_f(num x, int fake_true_num);
+  num d_smooth_f(num x, int fake_true_num);
 
   void get_marginals_mean_field(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals);
   void get_marginals_BP(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals);

@@ -21,9 +21,11 @@ class keyed_object(object):
 
 class pdb_name_struct(object):
 
-    def __init__(self, pdb_name, chain_letter):
+    def __init__(self, pdb_name, chain_letter, start, end):
         self.pdb_name = pdb_name
         self.chain_letter = chain_letter
+        self.start = start
+        self.end = end
 
     def __repr__(self):
         return self.pdb_name + '_' + self.chain_letter

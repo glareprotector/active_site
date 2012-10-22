@@ -147,6 +147,8 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
   // sample_labels will be of length (4+1) * num_testing, with the 1 for the null characters, 4 for the length of sample_names
   char* sample_pdb_names;
   char* sample_chain_letters;
+  int* sample_starts;
+  int* sample_ends;
   int* sample_lengths;
 
   // need to retrieve the length of sample_pdb_names and sample_chain_letters later
@@ -196,6 +198,8 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
     int sample_chain_letters_length = num_testing_sum * 2;
     sample_chain_letters = new char[sample_chain_letters_length];
     sample_lengths = new int[num_testing_sum];
+    sample_starts = new int[num_testing_sum];
+    sample_ends = new int[num_testing_sum];
   }
   else{
     // true_classes = arbi_array<int1d>; true_classes.resize(num_data);
@@ -207,6 +211,8 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
     int sample_chain_letters_length = num_testing * 2;
     sample_chain_letters = new char[sample_chain_letters_length];
     sample_lengths = new int[num_testing];
+    sample_starts = new int[num_testing];
+    sample_ends = new int[num_testing];
   }
 
   #else
@@ -221,6 +227,8 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
   int sample_chain_letters_length = num_testing * 2;
   sample_chain_letters = new char[sample_chain_letters_length];
   sample_lengths = new int[num_testing];
+  sample_starts = new int[num_testing];
+  sample_ends = new int[num_testing];
   num_testing_master = num_testing;
 
   #endif
@@ -243,6 +251,8 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
       idx++;
     }
     sample_lengths[i] = data(testing_indicies(i)).num_nodes;
+    sample_starts[i] = data(testing_indicies(i)).start;
+    sample_ends[i] = data(testing_indicies(i)).end;
   }
   // likewise, each node gets a char of length 5 * num_testing for pdb_names, char of length 2 * num_testing for chain_letters
   for(int i = 0; i < num_testing; i++){
@@ -280,6 +290,7 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
       MPI_Send(sample_pdb_names, 5 * next_sample_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
       MPI_Send(sample_chain_letters, 2 * next_sample_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
       MPI_Send(sample_lengths, num_testing, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(sample_starts, num_testing, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }
     else if(proc_id == 0){
       class_buf = true_classes + pos;
@@ -291,6 +302,8 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
       MPI_Recv(sample_pdb_names + (5 * sample_pos), 5 * next_sample_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
       MPI_Recv(sample_chain_letters + (2 * sample_pos), 2 * next_sample_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
       MPI_Recv(sample_lengths + sample_pos, next_sample_size, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(sample_starts + sample_pos, next_sample_size, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(sample_ends + sample_pos, next_sample_size, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
       pos += next_score_size;
       sample_pos += next_sample_size;
     }
@@ -306,11 +319,15 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
   arbi_array<string1d> parsed_pdb_names(num_testing_master);
   arbi_array<string1d> parsed_chain_letters(num_testing_master);
   arbi_array<int1d> sample_lengths_ar; sample_lengths_ar.resize(num_testing_master);
+  arbi_array<int1d> sample_starts_ar; sample_starts_ar.resize(num_testing_master);
+  arbi_array<int1d> sample_ends_ar; sample_ends_ar.resize(num_testing_master);
   if(proc_id == 0){
     for(int i = 0; i < num_testing_master; i++){
       parsed_pdb_names(i) = string(sample_pdb_names + (5*i));
       parsed_chain_letters(i) = string(sample_chain_letters + (2*i));
       sample_lengths_ar(i) = sample_lengths[i];
+      sample_starts_ar(i) = sample_starts[i];
+      sample_ends_ar(i) = sample_ends[i];
     }
   }
 
@@ -336,7 +353,7 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
 
     arbi_array<pdb_name_struct[1]> pdbs(num_testing_master);
     for(int i = 0; i < num_testing_master; i++){
-      pdbs(i) = pdb_name_struct(parsed_pdb_names(i), parsed_chain_letters(i));
+      pdbs(i) = pdb_name_struct(parsed_pdb_names(i), parsed_chain_letters(i), sample_starts_ar(i), sample_ends_ar(i));
     }
 
 
@@ -738,15 +755,17 @@ sample model::read_sample(pdb_name_struct pdb){
   
   cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), pdb.pdb_name);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), pdb.chain_letter);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), pdb.start);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), pdb.end);
 
   arbi_array<num2d> node_features = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("jW"), get_recalculate());
-
+  
   arbi_array<num2d> edge_features = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("kW"), get_recalculate());
-
+  cout<<edge_features.size().i0<<" "<<edge_features.size().i1<<endl;
   arbi_array<int1d> true_states =  cpp_param::get_var_or_file_int1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("oW"), get_recalculate());
 
   arbi_array<int2d> edge_list =  cpp_param::get_var_or_file_int2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("iW"), get_recalculate());
-  return sample(get_pMaker(), get_pParams(), get_recalculate(), this, node_features, edge_features, edge_list, true_states, pdb.pdb_name, pdb.chain_letter);
+  return sample(get_pMaker(), get_pParams(), get_recalculate(), this, node_features, edge_features, edge_list, true_states, pdb.pdb_name, pdb.chain_letter, pdb.start, pdb.end);
 }
 
 
@@ -871,11 +890,11 @@ num model::get_L(PyObject* pMaker, PyObject* pParams, bool recalculate, int whic
   }
 
   num ans = 0, temp;
-  cout<<"function: "<<endl;
+  //cout<<"function: "<<endl;
   for(int i = 0; i < theta.size().i0; i++){
     //cout<<theta(i)<<" ";
   }
-  cout<<endl;
+  //cout<<endl;
   for(int i = 0; i < training_indicies.size().i0; i++){
     //cout<<" iiiiiiiiiiiiiiiiiii "<<training_indicies(i)<<" "<<data(training_indicies(i)).pdb_name<<" "<<i<<endl;
     //cout<<training_indicies(i)<<" "<<flush;
@@ -1116,7 +1135,7 @@ int main(int argc, char* argv[]){
   num_procs = 1;
 #endif
 
-  cpp_caller::get_module_PyObject(string("run_test"), string("results"));
+  cpp_caller::get_module_PyObject(string("run_small_search"), string("asdf"));
 
   #ifdef USINGMAIN
 

@@ -35,33 +35,53 @@ import re
 import cross_validation_pseudo as cv
 
 
-# doesn't matter if pdb_name and chain_letter are capitalized
-class fW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
+# doesn't matter if pdb_name and c are capitalized
+class fW(wrapper.file_wrapper):
+
+    def get_folder(self, object_key):
+        return global_stuff.BIN_FOLDER + 'fWs' + '/'
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
         #pdb.set_trace()
-        pdb_file_name = self.get_param(params, 'pdb_name')
+        pdb_file_name = self.get_param(params, 'p')
         pdbl = Bio.PDB.PDBList()
         pdbl.retrieve_pdb_file(pdb_file_name, pdir=self.get_holding_folder())
         subprocess.call(['mv', self.get_holding_folder() + string.lower('pdb'+pdb_file_name+'.ent'), self.get_holding_location()])
 
         return open(self.get_holding_location(), 'r')
 
+
         
 class cW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-        #pdb.set_trace()
+
         f = self.get_var_or_file(fW, params, recalculate, to_pickle)
-        structure = Bio.PDB.PDBParser().get_structure(self.get_param(params, 'pdb_name'), f)
-        chain = Bio.PDB.PPBuilder().build_peptides(structure[0][self.get_param(params, 'chain_letter')])
+        structure = Bio.PDB.PDBParser().get_structure(self.get_param(params, 'p'), f)
+        chain = Bio.PDB.PPBuilder().build_peptides(structure[0][self.get_param(params, 'c')])
         to_return = []
         for chain_frag in chain:
             to_return = to_return + chain_frag
         # should raise exception here if error
-#        pdb.set_trace()
+        # now, only keep the parts of the chain whose positions are in the right range
+        start_pos = self.get_param(params, 'st')
+        end_pos = self.get_param(params, 'en')
+        # search for corresponding positions
+        start_aa = -1
+        end_aa = -1
+
+        for i in range(len(to_return)):
+            if to_return[i].get_id()[1] == start_pos:
+                start_aa = i
+        for i in reversed(range(len(to_return))):
+            if to_return[i].get_id()[1] == end_pos:
+                end_aa = i
+
+        assert start_aa != -1
+        assert end_aa != -1
+
         return to_return
 
 class aW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
@@ -70,6 +90,7 @@ class aW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
         chain_obj = self.get_var_or_file(cW, params, recalculate, True)
         chain_positions = [chain_obj[j].get_id()[1] for j in range(len(chain_obj))]
+
         return chain_positions
 
 class bW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
@@ -167,27 +188,60 @@ class iW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
         return edges
 
+
+# there are now 2 modes for this.  read from file, or calculate, depending on nmd: node feature mode
 class jW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
     # params will contain node_feature_list
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = True, always_recalculate = False, old_obj = None):
 
-        #temp = self.get_var_or_file(adW, params, recalculate, False, False, False)
-        
+        node_feature_mode = self.get_param(params, 'nfm')
 
-        feature_list = self.get_param(params, 'n')
-        aa_to_pos = self.get_var_or_file(aW, params, recalculate, True)
-        node_features = []
-        for i in range(len(aa_to_pos)):
-            pos = aa_to_pos[i]
-            self.set_param(params, 'pos', pos)
-            temp = []
-            for fxn_w in feature_list:
-                temp = temp + self.get_var_or_file(fxn_w, params, recalculate, False)
-            node_features.append(temp)
-        #pdb.set_trace()
-        return node_features
+        if node_feature_mode == 1:
+
+            feature_list = self.get_param(params, 'n')
+            aa_to_pos = self.get_var_or_file(aW, params, recalculate, True)
+            node_features = []
+            for i in range(len(aa_to_pos)):
+                pos = aa_to_pos[i]
+                self.set_param(params, 'pos', pos)
+                temp = []
+                for fxn_w in feature_list:
+                    temp = temp + self.get_var_or_file(fxn_w, params, recalculate, False)
+                    node_features.append(temp)
+            return node_features
+
+        elif node_feature_mode == 2:
+
+            #reading from file.
+            pdb_name = self.get_param(params, 'p')
+            c = self.get_param(params, 'c')
+            start = self.get_param(params, 'st')
+            end = self.get_param(params, 'en')
+            aux_folder = helper.get_aux_folder(pdb_name, c, start, end)
+            node_feature_file = aux_folder + pdb_name + '.features'
+            f = open(node_feature_file, 'r')
+            # afraid that not all positions got features assigned
+            pos_to_aa = self.get_var_or_file(eW, params, recalculate, True, False, False)
+            set_pos = set()
+            num_nodes = len(pos_to_aa.keys())
+            node_features = [-1 for i in range(num_nodes)]
+            for line in f:
+                s = line.strip().split('\t')
+                pos = int(s[0])
+                feature_string = s[1]
+                this_features = [float(x) for x in feature_string.split(',')]
+                node_features[pos_to_aa[pos]] = this_features
+                # keep track of which positions i have features for.  at the end, this set should include all of the keys in pos_to_aa.
+                # i got pos_to_aa by taking all positions in the specified range that worked
+                set_pos.add(pos)
+
+            # assert that all positions have been accounted for
+            assert(len(set(pos_to_aa.keys()) - set_pos) == 0)
+            return node_features
+                
+            
 
 class kW(wrapper.mat_obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
@@ -221,7 +275,7 @@ class lW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
         #pdb.set_trace()
         the_dict = {}
         the_dict["dist_cut_off"] = self.get_param(params, "co");
-        # data_list will be list of tuples of (pdb_name, chain_letter)
+        # data_list will be list of tuples of (pdb_name, c)
         the_dict["d"] = self.get_param(params, "d")
         the_dict['n'] = self.get_param(params, "n")
         the_dict['e'] = self.get_param(params, "e")
@@ -245,8 +299,8 @@ class mW(wrapper.obj_wrapper):
         f = open(self.get_param(params, 'd'), 'r')
         ans = []
         for line in f:
-            line = string.split(string.strip(line), sep='_')
-            ans.append(cv.pdb_name_struct(line[0], line[1]))
+            line = string.split(string.strip(line), sep=',')
+            ans.append(cv.pdb_name_struct(line[0], line[1], int(line[2]), int(line[3])))
             # pdb.set_trace()
         print ans
         return ans
@@ -256,7 +310,7 @@ class mW(wrapper.obj_wrapper):
 # there will be a parameter specifying which descendant to call
 class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
 
-    # params will be [(scores, sizes, pdb_name, chain_letter),   ]
+    # params will be [(scores, sizes, pdb_name, c),   ]
     # params which which it is stored does NOT include these things...only data_list, params for getting features
     # actually, now call the interface library to get a pdb_results_struct
     @dec
@@ -280,7 +334,7 @@ class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
             true_states = self.get_param(params, 'true_states', False)
             sizes = self.get_param(params, 'sizes', False)
             pdb_names = self.get_param(params, 'pdb_names', False)
-            chain_letters = self.get_param(params, 'chain_letters', False)
+            cs = self.get_param(params, 'cs', False)
             """
 
         elif mode == 1:
@@ -306,15 +360,16 @@ class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
         sizes = results.sample_lengths
         pdb_struct_names = results.pdb_structs
         pdb_names = [x.pdb_name for x in pdb_struct_names]
-        chain_letters = [x.chain_letter for x in pdb_struct_names]
-
+        cs = [x.c for x in pdb_struct_names]
+        sample_starts = [x.start for x in pdb_struct_names]
+        sample_ends = [x.start for x in pdb_struct_names]
         
         num_samples = len(pdb_names)
         pos = 0
         mat = []
-        # alternate between pdb_names, chain_letter and scores
+        # alternate between pdb_names, c and scores
         for i in range(num_samples):
-            mat.append([pdb_names[i], chain_letters[i], sizes[i]])
+            mat.append([pdb_names[i], cs[i], sizes[i], sample_starts[i], sample_ends[i]])
             mat.append(scores[pos:pos+sizes[i]])
             mat.append(true_states[pos:pos+sizes[i]])
             pos = pos + sizes[i]
@@ -322,31 +377,52 @@ class nW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
         return mat
 
 # for features i can't get automatically, assume that there is folder for each chain containing the features.  wrappers will then read from those folders
+# true_states file depends on which dataset i am working with.  store this as parameter that i don't keep track of
 class oW(wrapper.vect_obj_wrapper, wrapper.by_pdb_folder_wrapper):
     
     @dec
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
-        #pdb.set_trace()
+
         pos_to_aa = self.get_var_or_file(eW, params, recalculate, True, False)
-        #pdb.set_trace()
-        pdb_name = self.get_param(params, 'pdb_name')
-        chain_letter = self.get_param(params, 'chain_letter')
-        aux_folder = helper.get_aux_folder(pdb_name, chain_letter)
-        states_file = aux_folder + string.lower(pdb_name) + '.catres'
-        f = open(states_file, 'r')
+
+        pdb_name = self.get_param(params, 'p')
+        c = self.get_param(params, 'c')
+        start = self.get_param(params, 'st')
+        end = self.get_param(params, 'en')
+        aux_folder = helper.get_aux_folder(pdb_name, c, start, end)
         true_states = [0 for i in range(len(pos_to_aa.keys()))]
         chain_seq_in_one = self.get_var_or_file(dW, params, recalculate, True, False)
-        #pdb.set_trace()
-        for line in f:
-            processed = string.split(string.split(line, sep='\t')[0], sep=' ')
-            pos = int(processed[2])
-            aa = pos_to_aa[pos]
-            true_states[pos_to_aa[pos]] = 1
-            three = processed[1]
-            one = Polypeptide.three_to_one(three)
-            #assert one == chain_seq_in_one[aa]
-            true_states[aa] = 1
-        return true_states
+
+
+        true_states_mode = self.get_param(params, 'tsmd', False)
+
+        if true_states_mode == 1:
+
+            states_file = aux_folder + string.lower(pdb_name) + '.catres'
+            f = open(states_file, 'r')
+
+            for line in f:
+                processed = string.split(string.split(line, sep='\t')[0], sep=' ')
+                pos = int(processed[2])
+                aa = pos_to_aa[pos]
+                true_states[pos_to_aa[pos]] = 1
+                three = processed[1]
+                one = Polypeptide.three_to_one(three)
+                #assert one == chain_seq_in_one[aa]
+                true_states[aa] = 1
+            return true_states
+
+        elif true_states_mode == 2:
+            # will just read from the node features file
+            features_file = aux_folder + pdb_name + '.features'
+            f = open(features_file, 'r')
+            for line in f:
+                s = line.strip().split('\t')
+                pos = int(s[0])
+                state = int(s[2])
+                if state == 1:
+                    true_states[pos_to_aa[pos]] = 1
+            return true_states
 
 
 class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.shorten_name_wrapper):
@@ -365,11 +441,15 @@ class pW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper, wrapper.sh
         # if using regular results struct
         for i in range(num_samples):
             pdb_name = results[3 * i][0]
-            chain_letter = results[ 3 * i][1]
+            c = results[3 * i][1]
+            start = results[3 * i][2]
+            end = results[3 * i][3]
             scores = results[(3 * i) + 1]
             true_states_from_cpp = results[(3 * i) + 2]
-            self.set_param(params, "pdb_name", pdb_name)
-            self.set_param(params, "chain_letter", chain_letter)
+            self.set_param(params, p, pdb_name)
+            self.set_param(params, "c", c)
+            self.set_param(params, 'st', start)
+            self.set_param(params, 'en', end)
             true_states = self.get_var_or_file(oW, params, global_stuff.recalculate, True, True)
             roc_classes = roc_classes + true_states
             roc_scores = roc_scores + scores
@@ -437,9 +517,9 @@ class yW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
 
         pos_to_aa = self.get_var_or_file(eW, params, recalculate, True, False, True)
-        pdb_name = self.get_param(params, 'pdb_name')
-        chain_letter = self.get_param(params, 'chain_letter')
-        aux_folder = helper.get_aux_folder(pdb_name, chain_letter)
+        pdb_name = self.get_param(params, 'p')
+        c = self.get_param(params, 'c')
+        aux_folder = helper.get_aux_folder(pdb_name, c)
         intrepid_file = aux_folder + 'intrepid.aux'
         f = open(intrepid_file, 'r')
         all_lines = f.readlines()
@@ -469,9 +549,9 @@ class abW(wrapper.obj_wrapper):
         for i in range(len(data_list)):
             try:
                 pdb_name = data_list[i].pdb_name
-                chain_letter = data_list[i].chain_letter
+                c = data_list[i].c
                 print pdb_name
-                self.set_param(params, 'pdb_name', pdb_name)
+                self.set_param(params, p, pdb_name)
                 self.get_var_or_file(which_wrapper, params, recalculate, False, False)
             except:
                 print 'error while downloading ', data_list[i][0]
@@ -592,7 +672,7 @@ class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_type_wrapper, wrapper.shor
         for i in range(num_samples):
             pdb_name = results[3*i][0]
  #           pdb.set_trace()
-            chain_letter = results[3*i][1]
+            c = results[3*i][1]
             scores = results[(3*i)+1]
             true_states = results[(3*i)+2]
             # sort scores by marginals
@@ -600,8 +680,8 @@ class ahW(wrapper.mat_obj_wrapper, wrapper.experiment_type_wrapper, wrapper.shor
 #            pdb.set_trace()
 
             sorted_temp = sorted(temp, key = lambda x: x[0], reverse = True)
-            self.set_param(params, 'pdb_name', pdb_name)
-            self.set_param(params, 'chain_letter', chain_letter)
+            self.set_param(params, p, pdb_name)
+            self.set_param(params, 'c', c)
             # for each best site, see if any of the true sites are within that cutoff
             true_sites = self.get_var_or_file(anW, params, False, True, True, False)
             some_dists = self.get_var_or_file(amW, params, False, True, True, False)
@@ -766,7 +846,7 @@ class arW(wrapper.obj_wrapper):
         all_classes = []
         for i in range(len(data_list)):
             pdb_name = data_list[i].pdb_name
-            chain_letter = data_list[i].chain_letter
+            c = data_list[i].c
             this_features = self.get_var_or_file(jW, params, global_stuff.recalculate, True, True, False)
             all_features = all_features + this_features
             this_classes = self.get_var_or_file(oW, params, recalculate, True, True, False)
@@ -804,7 +884,7 @@ class awW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
             try:
                 ans[(int(s[1]),s[2])] = lines[i][16]
             except:
-                print 'error in reading dssp for ', self.get_param(params, 'pdb_name')
+                print 'error in reading dssp for ', self.get_param(params, 'p')
 
         return ans
                        
@@ -816,19 +896,19 @@ class azW(wrapper.file_wrapper, wrapper.by_pdb_folder_wrapper):
         # first copy pdb file to have more manageable file name
         #pdb.set_trace()
         f = self.get_var_or_file(fW, params, recalculate, False, False, False)
-        temp_location = self.get_holding_folder() + self.get_param(params, 'pdb_name') + '.pdb'
-        temp_location = global_stuff.NACCESS_FOLDER + self.get_param(params, 'pdb_name') + '.pdb'
+        temp_location = self.get_holding_folder() + self.get_param(params, 'p') + '.pdb'
+        temp_location = global_stuff.NACCESS_FOLDER + self.get_param(params, 'p') + '.pdb'
         subprocess.call(['cp', f.name, temp_location])
         # run Naccess which then puts the stuff in current working directory
         subprocess.call([global_stuff.NACCESS_PATH, temp_location])
         # delete the temp pdb file
         subprocess.call(['rm', temp_location])
         # move the newly created file to holding location
-        rsa_location = self.get_param(params, 'pdb_name') + '.rsa'
+        rsa_location = self.get_param(params, 'p') + '.rsa'
         subprocess.call(['mv', rsa_location, self.get_holding_location()])
         # delete the other 2 files
-        subprocess.call(['rm', self.get_param(params, 'pdb_name') + '.log'])
-        subprocess.call(['rm', self.get_param(params, 'pdb_name') + '.asa'])
+        subprocess.call(['rm', self.get_param(params, 'p') + '.log'])
+        subprocess.call(['rm', self.get_param(params, 'p') + '.asa'])
         return open(self.get_holding_location())
 
 # dictionary for processed NACCESS values.  will also store the residue for error checking
@@ -911,18 +991,16 @@ class bhW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
-        # get, for each site, the distance to closest active site
-#        pdb.set_trace()
         closest_dists = self.get_var_or_file(aqW, params, recalculate, True, True, False)
-        #which_f = self.get_param(params, 'wtpr')
-        which_f = 0
+        which_f = self.get_param(params, 'wnv')
         if which_f == 0:
-            taper_c = self.get_param(params,'hp').get_param('nwc')
+            c = self.get_param(params,'hp').get_param('nvec')
             def f(x):
                 return math.exp(taper_c * x)
         elif which_f == 1:
+            cut_off = self.get_param(params,'hp').get_param('nvjd')
             def f(x):
-                if abs(x) > .001:
+                if abs(x) > cut_off:
                     return 0
                 else:
                     return 1
@@ -976,8 +1054,8 @@ class bkW(wrapper.mat_obj_wrapper):
         j = 0
         for line in data_list:
             print line, j
-            self.set_param(params, 'pdb_name', line.pdb_name)
-            self.set_param(params, 'chain_letter', line.chain_letter)
+            self.set_param(params, p, line.pdb_name)
+            self.set_param(params, 'c', line.c)
             node_features = self.get_var_or_file(jW, params, recalculate, True, True, False)
             true_classes = self.get_var_or_file(oW, params, recalculate, True, True, False)
             dist = self.get_var_or_file(aqW, params, recalculate, True, True, False)
@@ -1241,6 +1319,45 @@ class ceW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
         return results
 
 
+# returns a positive weight for each position
+class cfW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+
+        closest_dists = self.get_var_or_file(aqW, params, recalculate, True, True, False)
+
+        which = self.get_param(params, 'ww')
+        if which == 0:
+            c = self.get_param(params,'hp').get_param('wec')
+            def f(x):
+                return math.exp(c*x)
+
+        elif which == 1:
+            cut_off = self.get_param(params,'hp').get_param('wjd')
+            posw = self.get_param(params,'hp').get_param('wpw')
+            def f(x):
+                if x <= cut_off:
+                    return posw
+                else:
+                    return 1.0
+
+        return [f(x) for x in closest_dists]
+
+# for a chain, returns the min and max positions
+class cgW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
+
+    @dec
+    def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
+        f = self.get_var_or_file(fW, params, recalculate, to_pickle)
+        structure = Bio.PDB.PDBParser().get_structure(self.get_param(params, 'p'), f)
+        chain = Bio.PDB.PPBuilder().build_peptides(structure[0][self.get_param(params, 'c')])
+        to_return = []
+        for chain_frag in chain:
+            to_return = to_return + chain_frag
+        min_pos = to_return[0].get_id()[1]
+        max_pos = to_return[-1].get_id()[1]
+        return [min_pos, max_pos]
 
 def print_stuff(x):
     #pdb.set_trace()

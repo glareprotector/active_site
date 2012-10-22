@@ -133,7 +133,7 @@ class axW(obj_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
         dssp_dict = self.get_var_or_file(objects.awW, params, recalculate, True, True, False)
-        return dssp_dict[(self.get_param(params, 'pos'),self.get_param(params, 'chain_letter'))]
+        return dssp_dict[(self.get_param(params, 'pos'),self.get_param(params, c))]
 
 
 class ayW(obj_wrapper):
@@ -154,7 +154,7 @@ class bbW(obj_wrapper):
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
 
         the_dict = self.get_var_or_file(objects.baW, params, recalculate, True, True, False)
-        chain_letter = self.get_param(params, 'chain_letter')
+        chain_letter = self.get_param(params, c)
         pos = self.get_param(params, 'pos')
         key = (pos, chain_letter)
         vals = the_dict[key]

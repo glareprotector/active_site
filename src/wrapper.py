@@ -164,7 +164,7 @@ class always_recalculate_wrapper(wrapper):
 class by_pdb_folder_wrapper(wrapper):
 
     def get_folder(self, object_key):
-        return constants.BIN_FOLDER  + object_key.get_param('pdb_name') + '/'
+        return constants.BIN_FOLDER  + object_key.get_param('p') + '_' + object_key.get_param('c') + '_' + str(object_key.get_param('st')) + '_' + str(object_key.get_param('en')) + '/'
 
     def specificity(self):
         return 'chain'
