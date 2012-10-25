@@ -1166,11 +1166,11 @@ class bhW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
         closest_dists = self.get_var_or_file(aqW, params, recalculate, True, True, False)
         which_f = self.get_param(params, 'wnv')
         if which_f == 0:
-            c = self.get_param(params,'hp').get_param('nvec')
+            c = self.get_param(params, 'nvec')
             def f(x):
                 return math.exp(taper_c * x)
         elif which_f == 1:
-            cut_off = self.get_param(params,'hp').get_param('nvjd')
+            cut_off = self.get_param(params, 'nvjd')
             def f(x):
                 if abs(x) > cut_off:
                     return 0
@@ -1408,7 +1408,7 @@ class test(wrapper.obj_wrapper):
         return folds, folds[0].get_folds(self, params, recalculate, 4)
 
 
-
+# ideally, param contains an object that implements get grid points method
 class ccW(wrapper.obj_wrapper):
     
     @dec
@@ -1504,13 +1504,13 @@ class cfW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
         which = self.get_param(params, 'ww')
         if which == 0:
-            c = self.get_param(params,'hp').get_param('wec')
+            c = self.get_param(params, 'wec')
             def f(x):
                 return math.exp(c*x)
 
         elif which == 1:
-            cut_off = self.get_param(params,'hp').get_param('wjd')
-            posw = self.get_param(params,'hp').get_param('wpw')
+            cut_off = self.get_param(params, 'wjd')
+            posw = self.get_param(params, 'wpw')
             def f(x):
                 if x <= cut_off:
                     return posw

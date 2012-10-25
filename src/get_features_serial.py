@@ -40,7 +40,7 @@ for i in range(len(data_list)):
         print k
         k += 1
         the_params.set_param('hp', hp)
-
+        the_params.flatten_hp()
         
         try:
 

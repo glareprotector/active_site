@@ -388,6 +388,14 @@ class cpp_param:cpp_caller{
   }
 
 
+  static void flatten_hp(PyObject* pParams){
+    PyObject* pMethodName = PyString_FromCPPString(string("flatten_hp"));
+    PyObject* pResult = PyObject_CallMethodObjArgs(pParams, pMethodName, NULL);
+    Py_DECREF(pMethodName);
+    Py_DECREF(pResult);
+  }
+
+
   static num get_hparam_num(PyObject* pMaker, PyObject* pParams, string key){
     PyObject* pMethodName = PyString_FromCPPString(string("get_param"));
     PyObject* pKey = PyString_FromCPPString(string("hp"));
@@ -405,6 +413,7 @@ class cpp_param:cpp_caller{
     Py_DECREF(pResult2);
     return ans;
   }
+
     
 
 };
