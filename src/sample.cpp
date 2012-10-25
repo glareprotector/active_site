@@ -647,9 +647,13 @@ num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
   arbi_array<num3d> edge_marginals;
   get_marginals(theta, node_marginals, edge_marginals, which_infer);
 
+
+  cpp_param::flatten_hp(get_pParams(), get_pMaker());
+
+
   // get the target value for each node
 
-  cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string(
+
 
   arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate());
 
@@ -679,6 +683,8 @@ void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<nu
 
   dL_dNode_Mu = arbi_array<num2d>(num_nodes, 2);
   dL_dNode_Mu = 0;
+
+  cpp_param::flatten_hp(get_pParams(), get_pMaker());
   
   arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate());
   arbi_array<num1d> weights = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("cfW"), get_recalculate());
