@@ -189,6 +189,9 @@ class indexed_wrapper(wrapper):
 
 class obj_wrapper(wrapper):
 
+    def whether_to_override(self):
+        return False
+
     def get_file_dumper(self, maker, params):
         return dfdW(maker, params)
 

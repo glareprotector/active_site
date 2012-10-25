@@ -80,7 +80,7 @@ def dec(f):
             self.temp_new_param_keys.pop()
             self.temp_dependents_all_keys_key_key_sets.pop()
 
-            raise Exception
+            raise
 #        print '        finished to calculate NEW stuff in wrapper ', self, recalculate, to_pickle, to_filelize, always_recalculate
 #        print '                                                             ', len(self.temp_used_keys)
         # always pickle used_keys and all_keys

@@ -265,7 +265,7 @@ class ciW(wrapper.obj_wrapper):
     def constructor(self, params, recalculate, to_pickle, to_filelize = False, always_recalculate = False, old_obj = None):
         data_list_file = self.get_var_or_file(mW, params, recalculate, True, False)
         to_return = []
-
+        pdb.set_trace()
         num_good = 0
         num_bad = 0
         asdf = 0
@@ -1323,6 +1323,9 @@ class bnW(wrapper.obj_wrapper, wrapper.by_pdb_folder_wrapper):
 
 # returns a data.  data_list_file should be specified
 class brW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper):
+
+    def whether_to_override(self):
+        return True
 
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):

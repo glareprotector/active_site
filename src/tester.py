@@ -14,16 +14,16 @@ import global_stuff
 
 import helper
 
-file_location = 'logreg'
+file_location = 'mf_nodewise_0'
 
 folder_name, the_params = helper.read_param(file_location)
 
-the_params.set_param('p', '9pap')
+the_params.set_param('p', '1p3d')
 the_params.set_param('c', 'A')
-the_params.set_param('st', 1)
-the_params.set_param('en', 212)
+the_params.set_param('st', 322)
+the_params.set_param('en', 473)
 
 
-ans = wc.get_stuff(objects.ciW, the_params, True, False, False)
+ans = wc.get_stuff(objects.ciW, the_params, False, False, False)
 
 print ans

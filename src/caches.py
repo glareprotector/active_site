@@ -80,14 +80,13 @@ class object_cache_for_wrapper(object):
     def has(self, object_key, recalculate):
         #print self, self.the_wrapper
         if object_key in self.dump:
-            if self.the_wrapper.whether_to_override(self.dump[object_key]):
-
-                return False
             
             return True
         else:
 
+            if self.the_wrapper.whether_to_override():
 
+                return False
 
             
             return self.pickle_dumper_wrapper.has(object_key, recalculate)

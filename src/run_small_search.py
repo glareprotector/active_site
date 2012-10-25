@@ -16,7 +16,7 @@ which_outer_fold = int(sys.argv[2])
 num_pieces = int(sys.argv[3])
 which_piece = int(sys.argv[4])
 
-#info_file = 'mf0'
+#info_file = 'mf_nodewise_0'
 
 
 info_file = sys.argv[5]
@@ -27,9 +27,9 @@ relative_folder, the_params = helper.read_param(info_file)
 
 
 #num_outer_fold = 3
-#which_outer_fold = 0
-#num_pieces = 6
-#which_piece = 0
+#which_outer_fold = 2
+#num_pieces = 330
+#which_piece = 96
 
 the_params.set_param('tj', num_pieces)
 the_params.set_param('wj', which_piece)

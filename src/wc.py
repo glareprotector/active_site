@@ -17,8 +17,16 @@ def get_stuff(wrapper_class, params, recalculate, to_pickle, to_filelize, always
         stuff_used_keys, stuff_all_keys, stuff, stuff_all_keys_key_key_set = wrapper_instance.constructor(params, recalculate, to_pickle, to_filelize, always_recalculate = always_recalculate)
     except Exception, err:
         print 'ERROR when calling get_stuff with this error', err, params
-        raise Exception
+        raise
     else:
         return stuff
 
 
+
+
+def get_wrapper_instance(wrapper):
+    import param
+    temp = param.param()
+    temp.set_param('which_wrapper_class', wrapper)
+    a,b,c,d = wc.constructor(temp, True, False, False)
+    return c

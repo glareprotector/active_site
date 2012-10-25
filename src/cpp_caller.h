@@ -414,7 +414,7 @@ class cpp_caller{
 };
 
 
-
+//set<string> cpp_caller::added_paths;
 
 class cached_obj_getter: public cpp_caller{
  public:
