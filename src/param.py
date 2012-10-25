@@ -29,10 +29,10 @@ class param(object):
     def __str__(self):
         to_join = []
         for key in sorted(self.param_dict.keys()):
-            temp = str(key) + '_' + str(self.param_dict[key])
+            temp = str(key) + str(self.param_dict[key])
             to_join.append(temp)
             
-        return '(' + string.join(to_join, '-') + ')'
+        return '(' + string.join(to_join, '_') + ')'
         
         return helper.shorten(str(sorted(self.param_dict.iteritems())))
 
