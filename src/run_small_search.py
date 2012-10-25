@@ -10,7 +10,7 @@ import constants
 
 from param import param
 
-input: number of outer folds, which fold, total size to split hp_values into, which job it is
+#input: number of outer folds, which fold, total size to split hp_values into, which job it is
 num_outer_fold = int(sys.argv[1])
 which_outer_fold = int(sys.argv[2])
 num_pieces = int(sys.argv[3])
@@ -35,7 +35,7 @@ the_params.set_param('tj', num_pieces)
 the_params.set_param('wj', which_piece)
 
 
-the_data = wc.get_stuff(objects.brW, the_params, True, False, False)
+the_data = wc.get_stuff(objects.brW, the_params, False, True, False)
 the_params.set_param('s', the_data)
 the_params.set_param('m', num_outer_fold)
 the_params.set_param('k', which_outer_fold)
@@ -45,7 +45,7 @@ the_params.set_param('k', which_outer_fold)
 
 
 
-the_fold = wc.get_stuff(objects.buW, the_params, True, False, False)
+the_fold = wc.get_stuff(objects.buW, the_params, False, False, False)
 
 import cross_validation_pseudo as cv
 

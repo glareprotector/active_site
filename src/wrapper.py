@@ -52,7 +52,7 @@ class wrapper(object):
             elif not to_reindex:
                 return helper.shorten(str(object_key))
             else:
-                pdb.set_trace()
+                #pdb.set_trace()
                 assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
                 return str(self.maker.object_key_to_index.get(object_key))
         else:
@@ -61,7 +61,7 @@ class wrapper(object):
             elif not to_reindex:
                 return helper.super_shorten(str(object_key))
             else:
-                pdb.set_trace()
+                #pdb.set_trace()
                 assert self.maker.object_key_to_index.has(object_key, to_reindex) == True
                 return global_stuff.super_shorten(str(self.maker.object_key_to_index.get(object_key)))
             

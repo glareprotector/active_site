@@ -35,15 +35,18 @@ for i in range(len(data_list)):
             the_params.set_param('en', end)
             print rank, pdb_name, 'start jw'
             f.write(str(rank) + ' ' + pdb_name + ' start jw\n')
-            wc.get_stuff(objects.jW, the_params, global_stuff.recalculate, True, True, False)
+
+            wc.get_stuff(objects.jW, the_params, False, True, True, False)
+
             print rank, pdb_name, 'start kw'
             f.write(str(rank) + ' ' + pdb_name + ' start kw\n')
-            wc.get_stuff(objects.kW, the_params, global_stuff.recalculate, True, True, False)
+            wc.get_stuff(objects.kW, the_params, False, True, True, False)
             print rank, pdb_name, 'end kw'
             f.write(str(rank) + ' ' + pdb_name + ' end kw\n')
             works.append(pdb_name + ',' + chain_letter + ',' + str(start) + ',' + str(end))
-        except:
-            print 'error in ', pdb_name, chain_letter
+        except Exception, err:
+
+            print 'error in ', pdb_name, chain_letter, err
             f.write(str(rank) + ' ' + pdb_name + ' error\n')
 f.write('before barrier')
 comm.Barrier()

@@ -6,16 +6,16 @@ Created on Mar 18, 2012
 INFO_FOLDER = '../info_folder/'
 ROC_CURVE_SCRIPT = './get_roc_from_python.r'
 ROC_INFO_SCRIPT = './get_roc_text.r'
-BIN_FOLDER = '../test12/'
+BIN_FOLDER = '../test13/'
 HOLDING_FOLDER = '../holding_folder/'
-AUX_FOLDER = '../data/catres-fam/'
+AUX_FOLDER = '../data/catres-fischer/'
 EVALUE = 1e-10
 AMINO_ACID_LIST = ['A','R','N','D','C','E','Q','G','H','I','L','K','M','F','P','S','T','W','Y','Y']
 AMINO_ACID_CATEGORIES = [ ['D','E','H','K','R'], ['Q','T','S','N'], ['A','F','G','I','L','M','P','V','W']]
 DSSP_CATEGORIES = ['H','B','E','G','I','T','S']
 HP_VALUES_FOLDER = INFO_FOLDER
 
-CACHE_MAX_SIZE = 100
+CACHE_MAX_SIZE = 500
 
 
 

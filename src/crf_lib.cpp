@@ -57,7 +57,12 @@ void init_crf(){
    My_Minimizer* minner = new My_Minimizer(&m);
    vector<num> w0(m.theta_length, 0);
    try{
-     return minner->LBFGS(pMaker, pParams, recalculate, w0, max_iter, which_obj, which_reg, which_infer);
+     arbi_array<num1d> initial = minner->LBFGS(pMaker, pParams, recalculate, w0, 20, 0, which_reg, which_infer);
+     vector<num> initial_vect(m.theta_length);
+     for(int i = 0; i < m.theta_length; i++){
+       initial_vect[i] = initial(i);
+     }
+     return minner->LBFGS(pMaker, pParams, recalculate, initial_vect, max_iter, which_obj, which_reg, which_infer);
    }
    catch(string e){
      cout<<e<<endl;

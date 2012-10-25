@@ -256,14 +256,14 @@ void Minimizer::ApproximateGradient (vector<double> &og,
     //cout<<x[i]<<" ";
 
   }
-  for (int i = 0; i < 80; i++){
+  for (int i = 0; i < 103; i++){
     x_copy[i] += EPSILON;
     //g[i] = (ComputeFunction (x_copy) - base) / EPSILON;
     double f = ComputeFunction (x_copy, which_obj, which_reg);
 	double g = (f - base) / EPSILON;
 	x_copy[i] = x[i];
 	//og[i]=g;
-	if (proc_id==0 && i == 34)
+	if (proc_id==0)
 		cerr << i << ": " << og[i] <<"::" << g << " " << (og[i]-g)/g <<"; f=" << f <<"; base=" << base <<endl;
   }
   //exit(1);
@@ -327,12 +327,12 @@ if (proc_id==0)
 }
 
 	
-//if (iterations%10  == 0)
- if(false)
+if (iterations%1000  == 100)
+//if(true)
 {
   
 
-	for (int i = 7; i < 12; i++)
+	for (int i = 7; i < 8; i++)
 	  //ApproximateGradient (aa[i], x[k%2], pow(10.0,(double)-i));
 	  ApproximateGradient (g[k%M], x[k%2], pow(10.0,(double)-i), which_obj, which_reg);
 

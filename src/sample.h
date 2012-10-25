@@ -147,8 +147,8 @@ class sample{
   void get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu);
   num get_L_nodewise(arbi_array<num1d> theta, int which_infer);
 
-  num smooth_f(num x, int fake_true_num);
-  num d_smooth_f(num x, int fake_true_num);
+  num smooth_f(num x, num fake_true_num);
+  num d_smooth_f(num x, num fake_true_num);
 
   void get_marginals_mean_field(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals);
   void get_marginals_BP(arbi_array<num2d> node_potentials, arbi_array<num3d> edge_potentials, arbi_array<num2d>& node_marginals, arbi_array<num3d>& edge_marginals);

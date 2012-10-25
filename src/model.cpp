@@ -50,6 +50,7 @@ void model::normalize(){
 
   for(int i = 0; i < num_node_features; i++){
 
+    cout<<"normalizing: "<<i<<endl;
     bool to_normalize;
     //to_normalize = (i > 0) && (i < 4);
     //to_normalize = i >= num_node_features - 5;
@@ -291,6 +292,7 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
       MPI_Send(sample_chain_letters, 2 * next_sample_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
       MPI_Send(sample_lengths, num_testing, MPI_INT, 0, 0, MPI_COMM_WORLD);
       MPI_Send(sample_starts, num_testing, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(sample_ends, num_testing, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }
     else if(proc_id == 0){
       class_buf = true_classes + pos;
@@ -328,6 +330,7 @@ pdb_results_struct model::get_results_struct(PyObject* pMaker, PyObject* pParams
       sample_lengths_ar(i) = sample_lengths[i];
       sample_starts_ar(i) = sample_starts[i];
       sample_ends_ar(i) = sample_ends[i];
+      cout<<sample_starts[i]<<" "<<sample_ends[i]<<" "<<parsed_pdb_names(i)<<endl;
     }
   }
 
@@ -695,6 +698,8 @@ model::model(PyObject* pMaker, PyObject* pParams, bool recalculate, arbi_array< 
   load_data(this->master_pdb_list, this->do_i_care_idx);
   //cout<<"g"<<endl;
   get_num_node_and_edge_features(this->num_node_features, this->num_edge_features);
+  cout<<this->num_node_features<<endl;
+
   this->num_states = cpp_param::get_param_int(get_pMaker(), get_pParams(), string("ns"));
   this->theta_length = get_maps(this->num_states, this->num_node_features, this->num_edge_features, this->node_map, this->edge_map);
   
@@ -731,7 +736,9 @@ model::model(PyObject* pMaker, PyObject* pParams, bool recalculate, int which_fo
   get_num_node_and_edge_features(this->num_node_features, this->num_edge_features);
   this->num_states = num_states;
   this->theta_length = get_maps(this->num_states, this->num_node_features, this->num_edge_features, this->node_map, this->edge_map);
-
+  cout<<"before normalize"<<endl;
+  normalize();
+  cout<<"after normalize"<<endl;
   unregister_pys();
   
 }
@@ -753,8 +760,8 @@ void model::load_data(arbi_array< pdb_name_struct[1]> master_pdb_list, arbi_arra
 
 sample model::read_sample(pdb_name_struct pdb){
   
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), pdb.pdb_name);
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), pdb.chain_letter);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("p"), pdb.pdb_name);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("c"), pdb.chain_letter);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), pdb.start);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), pdb.end);
 
@@ -801,7 +808,7 @@ arbi_array<num1d> model::get_dL_dTheta(PyObject* pMaker, PyObject* pParams, bool
   cout<<"gradient: "<<flush;
 
   for(int i = 0; i < this->training_indicies.size().i0; i++){
-    //cout<<training_indicies(i)<<" "<<flush;
+    //    cout<<"jjjjjjj"<<training_indicies(i)<<" "<<flush;
     ans = ans + data(training_indicies(i)).get_dL_dTheta(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
   }
   for(int i = 0; i < ans.size().i0; i++){
@@ -895,8 +902,9 @@ num model::get_L(PyObject* pMaker, PyObject* pParams, bool recalculate, int whic
     //cout<<theta(i)<<" ";
   }
   //cout<<endl;
+  
   for(int i = 0; i < training_indicies.size().i0; i++){
-    //cout<<" iiiiiiiiiiiiiiiiiii "<<training_indicies(i)<<" "<<data(training_indicies(i)).pdb_name<<" "<<i<<endl;
+    //    cout<<" iiiiiiiiiiiiiiiiiii "<<training_indicies(i)<<" "<<data(training_indicies(i)).pdb_name<<" "<<i<<endl;
     //cout<<training_indicies(i)<<" "<<flush;
     temp = data(training_indicies(i)).get_L(get_pMaker(), get_pParams(), get_recalculate(), which_obj, theta);
     ans += temp;
@@ -920,6 +928,8 @@ class My_Minimizer: public Minimizer{
     
     //int which_obj = PyInt_AsLong(cpp_caller::get_param(globals::pParams, string("wob")));
     //int which_obj = p_model->which_obj;
+
+    cout<<"gradient"<<endl;
 
     #ifdef SERIAL
 
@@ -983,7 +993,7 @@ class My_Minimizer: public Minimizer{
 
   virtual double ComputeFunction(const vector<double>& x, int which_obj, int which_reg){
 
-    
+    cout<<"compute function"<<endl;
 
     #ifndef SERIAL
     MPI_Barrier(MPI_COMM_WORLD);

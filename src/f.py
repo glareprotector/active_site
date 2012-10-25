@@ -116,13 +116,13 @@ class akW(obj_wrapper):
     # computes KL div between 2 columns of 2 chains
     @dec
     def constructor(self, params, recalculate, to_pickle = False, to_filelize = False, always_recalculate = False, old_obj = None):
+        
         msa = self.get_var_or_file(objects.agW, params, recalculate, True, True, False)
         pos_to_aa = self.get_var_or_file(objects.eW, params, recalculate, True, False, False)
         aa1 = pos_to_aa[self.get_param(params, 'pos1')]
         aa2 = pos_to_aa[self.get_param(params, 'pos2')]
         col1 = msa[:,aa1]
         col2 = msa[:,aa2]
-
         d1 = re.sub(r'-','',col1)
         d2 = re.sub(r'-','',col2)
         return [helper.get_KL(d1,d2)]

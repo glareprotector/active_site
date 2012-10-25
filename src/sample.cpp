@@ -586,16 +586,29 @@ num sample::get_L(int which_obj, arbi_array<num1d>& theta){
   }
 }
 
-num sample::smooth_f(num x, int fake_true_num){
+num sample::smooth_f(num x, num fake_true_num){
 
 
   int which_f = cpp_param::get_param_int(get_pMaker(), get_pParams(), string("wl"));
 
   if(which_f == 0){
     num c = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec"));
-    return exp(c*x*x);
+    return 1.0 - (1.0 / (1.0 + exp(c*x*x)));
   }
-
+  else if(which_f == 1){
+    // same as above, except that c depends on fake_true_num. assuming fake_true_num is only 0 or 1
+    num c1 = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec1"));
+    num c2 = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec2"));
+    if(fabs(fake_true_num - 1.0) < .001){
+      return 1.0 - (1.0 / (1.0 + exp(c1*x*x)));
+    }
+    else if(fabs(fake_true_num - 0.0) < .001){
+      return 1.0 - (1.0 / (1.0 + exp(c2*x*x)));
+    }
+    else{
+      assert(false);
+    }
+  }
 
   num sfc = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("sfc"));
 
@@ -624,8 +637,8 @@ num sample::get_L_pseudo(arbi_array<num1d> theta){
 
 num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
 
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("p"), this->pdb_name);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("c"), this->chain_letter);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 
@@ -656,8 +669,8 @@ num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
 void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<num3d> edge_marginals, arbi_array<num2d>& dL_dNode_Mu, arbi_array<num3d>& dL_dEdge_Mu){
 
 
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("p"), this->pdb_name);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("c"), this->chain_letter);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 
@@ -702,8 +715,8 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta, int which_infer){
   get_marginals(theta, node_marginals, edge_marginals, which_infer);
 
 
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("p"), this->pdb_name);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("c"), this->chain_letter);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 
@@ -749,15 +762,30 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta, int which_infer){
 
 }
 
-num sample::d_smooth_f(num x, int fake_true_num){
+num sample::d_smooth_f(num x, num fake_true_num){
 
 
   int which_f = cpp_param::get_param_int(get_pMaker(), get_pParams(), string("wl"));
   
   if(which_f == 0){
     num c = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec"));
-    return exp(c*x*x)*2.0*c;
+    return 2.0*c*x*exp(c*x*x) / pow(exp(c*x*x) + 1.0, 2);
   }
+  else if(which_f == 1){
+    // same as above, except that c depends on fake_true_num. assuming fake_true_num is only 0 or 1
+    num c1 = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec1"));
+    num c2 = cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string("lec2"));
+    if(fabs(fake_true_num - 1.0) < .001){
+      return 2.0*c1*x*exp(c1*x*x) / pow(exp(c1*x*x) + 1.0, 2);
+    }
+    else if(fabs(fake_true_num - 0.0) < .001){
+      return 2.0*c2*x*exp(c2*x*x) / pow(exp(c2*x*x) + 1.0, 2);
+    }
+    else{
+      assert(false);
+    }
+  }
+
   
 				      
 
@@ -777,8 +805,8 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi
   dL_dNode_Mu = 0;
 
 
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("pdb_name"), this->pdb_name);
-  cpp_param::set_param(get_pMaker(), get_pParams(), string("chain_letter"), this->chain_letter);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("p"), this->pdb_name);
+  cpp_param::set_param(get_pMaker(), get_pParams(), string("c"), this->chain_letter);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("st"), this->start);
   cpp_param::set_param(get_pMaker(), get_pParams(), string("en"), this->end);
 

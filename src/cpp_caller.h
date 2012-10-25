@@ -341,7 +341,7 @@ class cpp_caller{
     string pdb_name = pdb.pdb_name;
     string chain_letter = pdb.chain_letter;
     int start = pdb.start;
-    int end = pdb.start;
+    int end = pdb.end;
     PyObject* pPdb_name = PyString_FromCPPString(pdb_name);
     PyObject* pChain_letter = PyString_FromCPPString(chain_letter);
     PyObject* pStart = PyInt_FromLong(start);
