@@ -649,7 +649,7 @@ num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
 
   // get the target value for each node
 
-  cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string(
+
 
   arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate());
 
