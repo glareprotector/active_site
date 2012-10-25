@@ -11,6 +11,9 @@ import sys
 file_location = sys.argv[1]
 
 
+wrappers = [objects.jW, objects.kW, objects.bhW, objects.cfW, objects.oW]
+
+
 folder_name, the_params = helper.read_param(file_location)
 
 comm = MPI.COMM_WORLD
@@ -29,25 +32,29 @@ for i in range(len(data_list)):
         end = data_list[i].end
         try:
 
-            the_params.set_param('p', pdb_name)
-            the_params.set_param('c', chain_letter)
-            the_params.set_param('st', start)
-            the_params.set_param('en', end)
-            print rank, pdb_name, 'start jw'
-            f.write(str(rank) + ' ' + pdb_name + ' start jw\n')
+            for wrapper in wrappers:
 
-            wc.get_stuff(objects.jW, the_params, False, True, True, False)
+                the_params.set_param('p', pdb_name)
+                the_params.set_param('c', chain_letter)
+                the_params.set_param('st', start)
+                the_params.set_param('en', end)
+                print rank, pdb_name, wrapper
+                start_string = str(rank) + ' ' + pdb_name + ' start ' + str(wrapper) + '\n'
+                f.write(start_string)
+                print start_string
 
-            print rank, pdb_name, 'start kw'
-            f.write(str(rank) + ' ' + pdb_name + ' start kw\n')
-            wc.get_stuff(objects.kW, the_params, False, True, True, False)
-            print rank, pdb_name, 'end kw'
-            f.write(str(rank) + ' ' + pdb_name + ' end kw\n')
-            works.append(pdb_name + ',' + chain_letter + ',' + str(start) + ',' + str(end))
+                wc.get_stuff(wrapper, the_params, False, True, True, False)
+
+                end_string = str(rank) + ' ' + pdb_name + ' end ' + str(wrapper) + '\n'
+
         except Exception, err:
 
             print 'error in ', pdb_name, chain_letter, err
             f.write(str(rank) + ' ' + pdb_name + ' error\n')
+        else:
+            works.append(pdb_name + ',' + chain_letter + ',' + str(start) + ',' + str(end))
+
+
 f.write('before barrier')
 comm.Barrier()
 f.write('past barrier')

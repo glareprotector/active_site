@@ -1372,7 +1372,7 @@ class bwW(wrapper.obj_wrapper, wrapper.shorten_name_wrapper, wrapper.experiment_
 
         print self.get_param(params, 'hp', False)
         import time
-        pdb.set_trace()
+
         return cv.train_test_result(self, params, recalculate)
 
 

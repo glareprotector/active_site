@@ -247,7 +247,12 @@ class cv_results(keyed_object):
         maker.set_param(params, 'hp', self.get_hp())
         metric_data = maker.get_var_or_file(objects.ahW, params, False, False, False, False)
         #assert(len(metric_data) == 1)
-        metric = metric_data[-1][6] + metric_data[-1][7]
+
+
+        which_distance = self.get_param(params, 'wdm')
+
+        metric = metric_data[which_distance]
+
         #pdb.set_trace()
         return metric
         

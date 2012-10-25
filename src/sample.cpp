@@ -648,10 +648,13 @@ num sample::get_L_nodewise(arbi_array<num1d> theta, int which_infer){
   get_marginals(theta, node_marginals, edge_marginals, which_infer);
 
   // get the target value for each node
-  arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate(), true, true, false);
+
+  cpp_param::get_hparam_num(get_pMaker(), get_pParams(), string(
+
+  arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate());
 
   // get the weight for each node
-  arbi_array<num1d> weights = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("cfW"), get_recalculate(), true, true, false);
+  arbi_array<num1d> weights = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("cfW"), get_recalculate());
 
 
   for(int i = 0; i < num_nodes; i++){
@@ -677,8 +680,8 @@ void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<nu
   dL_dNode_Mu = arbi_array<num2d>(num_nodes, 2);
   dL_dNode_Mu = 0;
   
-  arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate(), true, true, false);
-  arbi_array<num1d> weights = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("cfW"), get_recalculate(), true, true, false);
+  arbi_array<num1d> fake_true_num = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bhW"), get_recalculate());
+  arbi_array<num1d> weights = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("cfW"), get_recalculate());
 
   for(int i = 0; i < num_nodes; i++){
 
@@ -691,7 +694,7 @@ void sample::get_dL_dMu_nodewise(arbi_array<num2d> node_marginals, arbi_array<nu
 arbi_array<num1d> sample::get_L_expected_distance_node_importance(){
   arbi_array<num1d> imp(num_nodes);
   
-  arbi_array<num1d> closest_dists = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("aqW"), get_recalculate(), false, false, false);
+  arbi_array<num1d> closest_dists = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("aqW"), get_recalculate());
 
   /*PyObject* pClosests = cached_obj_getter::call_wrapper(string("new_new_objects"), string("aqW"), globals::pParams, globals::recalculate, false, false, false);
   arbi_array<num1d> closest_dists = cpp_caller::py_float_list_to_cpp_num_vect(pClosests);
@@ -735,9 +738,9 @@ num sample::get_L_expected_distance(arbi_array<num1d> theta, int which_infer){
 */
   // weigh nodewise loss based on how far they are from a true site
 
-  arbi_array<num2d> sorted_distances = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate(), true, true, false);
-  arbi_array<int2d> sorted_pos = cpp_param::get_var_or_file_int2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("byW"), get_recalculate(), true, true, false);
-  arbi_array<num1d> closest_dists = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate(), true, true, false);
+  arbi_array<num2d> sorted_distances = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate());
+  arbi_array<int2d> sorted_pos = cpp_param::get_var_or_file_int2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("byW"), get_recalculate());
+  arbi_array<num1d> closest_dists = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate());
 
   arbi_array<num1d> imp = get_L_expected_distance_node_importance();
 
@@ -828,9 +831,9 @@ void sample::get_dL_dMu_expected_distance(arbi_array<num2d> node_marginals, arbi
 */
 
   
-  arbi_array<num2d> sorted_distances = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate(), true, true, false);
-  arbi_array<int2d> sorted_pos = cpp_param::get_var_or_file_int2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("byW"), get_recalculate(), true, true, false);
-  arbi_array<num1d> closest_dists = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate(), true, true, false);
+  arbi_array<num2d> sorted_distances = cpp_param::get_var_or_file_num2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate());
+  arbi_array<int2d> sorted_pos = cpp_param::get_var_or_file_int2d(get_pMaker(), get_pParams(), string("new_new_objects"), string("byW"), get_recalculate());
+  arbi_array<num1d> closest_dists = cpp_param::get_var_or_file_num1d(get_pMaker(), get_pParams(), string("new_new_objects"), string("bxW"), get_recalculate());
 
 
 
