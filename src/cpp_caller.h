@@ -448,6 +448,9 @@ class cached_obj_getter: public cpp_caller{
 
 };
 
+
+set<string> cpp_caller::added_paths;
+
 #endif
 
 #include "cpp_param.h"
