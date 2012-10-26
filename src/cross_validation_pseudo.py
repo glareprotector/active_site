@@ -59,7 +59,7 @@ class data(keyed_object):
         # ERROR objects.mW should return list of pdb_name_structs
 
         maker.set_param(params, 'data_list_file', data_list_file)
-        self.names = maker.get_var_or_file(objects.mW, params, recalculate, False, False)
+        self.names = maker.get_var_or_file(objects.ciW, params, recalculate, False, False)
 
     def get_training_names(self):
         return self.names

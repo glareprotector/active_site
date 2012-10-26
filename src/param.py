@@ -92,7 +92,7 @@ class param(object):
     def __repr__(self):
         return self.__str__()
 
-    def flatten_hp(self):
+    def flatten_hp(self, maker):
         hp = self.get_param('hp')
-        for key in hp:
-            self.set_param(key, hp.get_param(key))
+        for key in hp.get_keys():
+            maker.set_param(self, key, hp.get_param(key))

@@ -11,10 +11,14 @@ import sys
 file_location = sys.argv[1]
 
 
-wrappers = [objects.jW, objects.kW, objects.bhW, objects.cfW, objects.oW]
+wrappers = [objects.bhW, objects.cfW]
 
 
 folder_name, the_params = helper.read_param(file_location)
+
+the_params.set_param('tj',1)
+the_params.set_param('wj',0)
+hp_stash = wc.get_stuff(objects.caW, the_params, False, False, False)
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -22,7 +26,7 @@ size = comm.Get_size()
 
 f = open('bin/get_features_parallel_'+str(rank), 'w', 0)
 
-data_list = wc.get_stuff(objects.mW, the_params, global_stuff.recalculate, True, True)
+data_list = wc.get_stuff(objects.ciW, the_params, global_stuff.recalculate, True, True)
 works = []
 for i in range(len(data_list)):
     if i % size == rank:
@@ -34,18 +38,22 @@ for i in range(len(data_list)):
 
             for wrapper in wrappers:
 
-                the_params.set_param('p', pdb_name)
-                the_params.set_param('c', chain_letter)
-                the_params.set_param('st', start)
-                the_params.set_param('en', end)
-                print rank, pdb_name, wrapper
-                start_string = str(rank) + ' ' + pdb_name + ' start ' + str(wrapper) + '\n'
-                f.write(start_string)
-                print start_string
+                for hp in hp_stash:
 
-                wc.get_stuff(wrapper, the_params, False, True, True, False)
+                    the_params.set_param('p', pdb_name)
+                    the_params.set_param('c', chain_letter)
+                    the_params.set_param('st', start)
+                    the_params.set_param('en', end)
+                    the_params.set_param('hp', hp)
+                    the_params.flatten_hp(wc.useless)
+                    print rank, pdb_name, wrapper
+                    start_string = str(rank) + ' ' + pdb_name + ' start ' + str(wrapper) + '\n'
+                    f.write(start_string)
+                    print start_string
 
-                end_string = str(rank) + ' ' + pdb_name + ' end ' + str(wrapper) + '\n'
+                    wc.get_stuff(wrapper, the_params, False, True, True, False)
+
+                    end_string = str(rank) + ' ' + pdb_name + ' end ' + str(wrapper) + '\n'
 
         except Exception, err:
 

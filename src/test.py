@@ -67,6 +67,18 @@ except AttributeError:
 
 
 
+def init_crf():
+  return _test.init_crf()
+init_crf = _test.init_crf
+
+def get_results_given_testing_data_and_theta(*args):
+  return _test.get_results_given_testing_data_and_theta(*args)
+get_results_given_testing_data_and_theta = _test.get_results_given_testing_data_and_theta
+
+def get_theta_given_training_data_and_hypers(*args):
+  return _test.get_theta_given_training_data_and_hypers(*args)
+get_theta_given_training_data_and_hypers = _test.get_theta_given_training_data_and_hypers
+
 def f(*args):
   return _test.f(*args)
 f = _test.f
