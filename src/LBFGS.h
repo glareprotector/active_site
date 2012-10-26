@@ -14,7 +14,7 @@
 
 using namespace std;
 
- 
+
 
 void Error (const char *error_msg);
 

@@ -1,6 +1,8 @@
 int num_procs;
 int proc_id;
-
+#include <string>
+#include <set>
+std::set<std::string> added_paths;
 /*
 #include <vector>
 arbi_array<num1d> num_vect_to_arbi_array(vector<num> vect){

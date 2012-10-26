@@ -45,6 +45,8 @@ extern int proc_id;
 // end
 
 
+//set<string> added_paths;
+
 struct pdb_name_struct{
   
   pdb_name_struct(){

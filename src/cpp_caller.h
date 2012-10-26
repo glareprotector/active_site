@@ -14,12 +14,12 @@ using namespace std;
 
 // this function will allow one to call module functions(not member functions of any object)
 // will need to specify the module name, function name.
-
+extern set<string> added_paths;
 class cpp_caller{
  
  public:
 
-  static set<string> added_paths;
+
 
   static PyObject* call_PyFunc(string module_name, string fxn_name, PyObject* pArgs){
     // load module
@@ -449,7 +449,7 @@ class cached_obj_getter: public cpp_caller{
 };
 
 
-set<string> cpp_caller::added_paths;
+
 
 #endif
 

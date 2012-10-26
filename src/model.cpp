@@ -1072,7 +1072,7 @@ class My_Minimizer: public Minimizer{
   }
 };
 
-set<string> cpp_caller::added_paths;
+//set<string> cpp_caller::added_paths;
 
 bool is_numeric(string s){
   for(int i = 0; i < s.length(); i++){
@@ -1134,7 +1134,7 @@ int main(int argc, char* argv[]){
   
   PyObject* pSysPath= cpp_caller::_get_module_PyObject(string("sys"), string("path"));
   for(int i = 0; i < PyList_Size(pSysPath); i++){
-    cpp_caller::added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
+    added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
   }
   // set proc_id
 #ifndef SERIAL
@@ -1173,7 +1173,7 @@ int main(int argc, char* argv[]){
   PyObject* pSysPath= cpp_caller::_get_module_PyObject(string("sys"), string("path"));
   
   for(int i = 0; i < PyList_Size(pSysPath); i++){
-    cpp_caller::added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
+    added_paths.insert(string(PyString_AsString(PyList_GetItem(pSysPath, i))));
   }
 
   cout<<"DD"<<endl;
