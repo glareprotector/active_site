@@ -95,5 +95,6 @@ class param(object):
     def flatten_hp(self, maker):
 
         hp = maker.get_param(self,'hp')
+
         for key in hp.get_keys():
             maker.set_param(self, key, hp.get_param(key))
