@@ -249,9 +249,9 @@ class cv_results(keyed_object):
         #assert(len(metric_data) == 1)
 
 
-        which_distance = self.get_param(params, 'wdm')
+        which_distance = maker.get_param(params, 'wdm')
 
-        metric = metric_data[which_distance]
+        metric = metric_data[0][which_distance]
 
         #pdb.set_trace()
         return metric
@@ -298,8 +298,8 @@ class hp_search_results(keyed_object):
                 # also get ahW corresponding to this cv_result so it is easy to get the best one later on
                 maker.set_param(params, 'md', 3)
                 temp = maker.get_var_or_file(objects.ahW, params, recalculate, True, True, False)
-            except Exception as e:
-                print e
+            except:
+                print 'couldnt gets results', next_hp
         #pdb.set_trace()
 
     def get_cv_result(self, hp):
@@ -308,18 +308,19 @@ class hp_search_results(keyed_object):
     def get_best_hp(self, maker, params, recalculate):
         best = -1
         best_idx = -1
+        pdb.set_trace()
         for i in range(len(self.result_keys)):
-            print i
-
+            print i, 'getting best'
+            pdb.set_trace()
             try:
                 temp = self.cv_result_list[i].get_metric(maker, params, recalculate)
                 if temp > best:
                     best_idx = i
                     best = temp
-            except Exception as e:
-                print e
+            except:
+                print "failed at ", i
         assert best != -1
-        #pdb.set_trace()
+        pdb.set_trace()
         return self.result_keys[best_idx]
 
 
@@ -340,6 +341,7 @@ class overall_results(keyed_object):
         outer_k = maker.get_param(params, 'ok')
         folds = self.the_data.get_folds(maker, params, recalculate, outer_k)
         for a_fold in folds:
+            pdb.set_trace()
             maker.set_param(params, 'f', a_fold)
             maker.set_param(params, 'wj', 0)
             maker.set_param(params, 'nj', 1)
@@ -347,7 +349,9 @@ class overall_results(keyed_object):
             maker.set_param(params, 'hps', the_searcher)
 
             a_hp_search_result = hp_search_results(maker, params, recalculate)
+            pdb.set_trace()
             best_hp = a_hp_search_result.get_best_hp(maker, params, recalculate)
+            pdb.set_trace()
             self.best_hps.append(best_hp)
 
             maker.set_param(params, 'hp', best_hp)

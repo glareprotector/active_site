@@ -1484,7 +1484,7 @@ class ceW(wrapper.mat_obj_wrapper, wrapper.experiment_results_wrapper):
     @dec
     def constructor(self, params, recalculate, to_pickle = True, to_filelize = True, always_recalculate = False, old_obj = None):
 
-        a_data = self.get_var_or_file(brW, params, True, False, False)
+        a_data = self.get_var_or_file(brW, params, recalculate, False, False)
         self.set_param(params, 'f', a_data)
         self.set_param(params, 'md', 1)
         the_overall_results = self.get_var_or_file(btW, params, recalculate, False, False, False)

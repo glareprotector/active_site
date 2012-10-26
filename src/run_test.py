@@ -22,7 +22,7 @@ info_file = sys.argv[1]
 
 relative_folder, the_params = helper.read_param(info_file)
 
-the_params.set_param('tj',1)
+the_params.set_param('tj',330)
 
 results = wc.get_stuff(objects.ceW, the_params, False, True, True)
 pdb.set_trace()
