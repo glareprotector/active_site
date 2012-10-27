@@ -308,10 +308,10 @@ class hp_search_results(keyed_object):
     def get_best_hp(self, maker, params, recalculate):
         best = -1
         best_idx = -1
-        pdb.set_trace()
+
         for i in range(len(self.result_keys)):
             print i, 'getting best'
-            pdb.set_trace()
+
             try:
                 temp = self.cv_result_list[i].get_metric(maker, params, recalculate)
                 if temp > best:
@@ -320,7 +320,7 @@ class hp_search_results(keyed_object):
             except:
                 print "failed at ", i
         assert best != -1
-        pdb.set_trace()
+
         return self.result_keys[best_idx]
 
 
@@ -341,7 +341,7 @@ class overall_results(keyed_object):
         outer_k = maker.get_param(params, 'ok')
         folds = self.the_data.get_folds(maker, params, recalculate, outer_k)
         for a_fold in folds:
-            pdb.set_trace()
+
             maker.set_param(params, 'f', a_fold)
             maker.set_param(params, 'wj', 0)
             maker.set_param(params, 'nj', 1)
@@ -349,9 +349,9 @@ class overall_results(keyed_object):
             maker.set_param(params, 'hps', the_searcher)
 
             a_hp_search_result = hp_search_results(maker, params, recalculate)
-            pdb.set_trace()
+
             best_hp = a_hp_search_result.get_best_hp(maker, params, recalculate)
-            pdb.set_trace()
+
             self.best_hps.append(best_hp)
 
             maker.set_param(params, 'hp', best_hp)

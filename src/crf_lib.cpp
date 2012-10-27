@@ -57,7 +57,8 @@ void init_crf(MPI_Comm comm){
     My_Minimizer* minner = new My_Minimizer(&m);
     vector<num> w0(m.theta_length, 0);
     try{
-      arbi_array<num1d> initial = minner->LBFGS(pMaker, pParams, recalculate, w0, 35, 0, which_reg, which_infer);
+      int li = cpp_param::get_param_int(pMaker, pParams, string("li"));
+      arbi_array<num1d> initial = minner->LBFGS(pMaker, pParams, recalculate, w0, li, 0, which_reg, which_infer);
       vector<num> initial_vect(m.theta_length);
       for(int i = 0; i < m.theta_length; i++){
 	initial_vect[i] = initial(i);
